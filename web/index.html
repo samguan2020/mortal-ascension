@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#153e44">
+    <title>Mortal Ascension · 听雨客栈</title>
+  </head>
+  <body>
+    <main id="game" aria-label="Mortal Ascension · 听雨客栈三维游戏">
+      <div id="viewport"></div>
+      <header class="masthead">
+        <div class="brand"><p>青石镇 · 听雨客栈</p><h1>Mortal Ascension</h1></div>
+        <div class="indicators" role="status">
+          <span id="renderer-state">渲染器准备中</span>
+          <span id="api-state">连接掌柜…</span>
+          <span id="actor-state">人物加载中…</span>
+        </div>
+      </header>
+      <aside class="quest"><small>当前目标</small><strong>问道之始</strong><p>走近柳掌柜，打听踏入仙途的门路。</p></aside>
+      <footer class="controls">WASD / 方向键 / 左摇杆移动　·　E / 手柄 A 交谈　·　Esc / B 返回</footer>
+      <button id="interact" class="interact" hidden>与柳掌柜交谈 <kbd>E</kbd></button>
+      <section id="conversation" aria-labelledby="npc-heading" hidden>
+        <div class="conversation-heading"><div><small>听雨客栈掌柜</small><h2 id="npc-heading">柳掌柜</h2></div><button id="close" aria-label="结束交谈">×</button></div>
+        <div id="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+        <div class="prompts">
+          <button data-prompt="我是初来乍到的旅人，想打听如何踏入修仙之路。">如何修仙</button>
+          <button data-prompt="附近有哪些宗门？凡人也能去拜访吗？">附近仙门</button>
+          <button data-prompt="镇上最近有什么值得留意的传闻？">江湖传闻</button>
+        </div>
+        <form id="chat-form"><label class="sr-only" for="message">向柳掌柜提问</label><input id="message" maxlength="500" autocomplete="off" placeholder="向掌柜打听…" required><button id="send">发送</button></form>
+        <p id="chat-status" role="status"></p>
+        <small class="session-note">云端测试版 · 对话记忆仅在当前服务会话内保留</small>
+      </section>
+      <div id="notice" role="alert" hidden></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,59 @@
+:root {
+  font-family: "Noto Serif SC", "Songti SC", "Microsoft YaHei", serif;
+  color: #173e43;
+  background: #b4dfe9;
+  font-synthesis: none;
+  --paper: #fff3d8;
+  --ink: #163f45;
+  --red: #b83c2f;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body, #game, #viewport { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+canvas { display: block; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: 0.6; }
+button:focus-visible, input:focus-visible { outline: 3px solid #168c91; outline-offset: 2px; }
+.masthead { position: fixed; inset: 22px 28px auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; pointer-events: none; }
+.brand { padding: 10px 18px; border-left: 4px solid var(--red); background: linear-gradient(90deg, #fff3d8ef, #fff3d810); min-width: 260px; }
+.brand p { margin: 0 0 5px; font-size: 12px; letter-spacing: 0.18em; font-weight: bold; }
+h1 { font-size: clamp(22px, 2.7vw, 34px); margin: 0; letter-spacing: 0.04em; }
+h2 { margin: 4px 0 0; font-size: 24px; }
+.indicators { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; max-width: 55%; }
+.indicators span { padding: 9px 12px; background: #153d42ef; color: #f3f8ec; font-size: 12px; }
+.quest { position: fixed; top: 120px; left: 28px; width: 255px; background: #fff3d8e8; border-left: 4px solid var(--red); padding: 15px; }
+.quest small { display: block; margin-bottom: 6px; color: #37695d; letter-spacing: 0.14em; }
+.quest p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }
+.controls { position: fixed; bottom: 24px; left: 28px; padding: 13px; background: #153d42ee; color: #eff7e7; font-size: 12px; max-width: 43%; line-height: 1.7; }
+.interact { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper); border: 1px solid #e7ce96; padding: 14px 20px; }
+kbd { background: var(--red); margin-left: 10px; padding: 4px 8px; }
+#conversation { position: fixed; right: 28px; bottom: 28px; width: min(430px, calc(100vw - 40px)); max-height: calc(100dvh - 160px); padding: 20px; border-left: 5px solid var(--red); background: linear-gradient(120deg, #fff9e7fa, #eee5c8fa); box-shadow: 0 18px 65px #132e3038; display: flex; flex-direction: column; }
+.conversation-heading { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #294e4238; padding-bottom: 12px; }
+.conversation-heading small { color: #873d31; font-weight: bold; }
+#close { width: 36px; height: 36px; border: 0; background: var(--ink); color: var(--paper); font-size: 26px; }
+#messages { overflow-y: auto; min-height: 120px; flex: 1; max-height: 320px; display: flex; flex-direction: column; gap: 12px; padding: 16px 0; }
+#messages p { line-height: 1.65; max-width: 90%; margin: 0; padding: 10px 13px; }
+.from-npc { border-left: 2px solid #12827a; background: #fffef5e6; align-self: flex-start; }
+.from-player { background: #17645f; color: #f4fff6; align-self: flex-end; }
+.prompts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.prompts button { padding: 7px 10px; color: #245b52; background: #e3f1dbe6; border: 1px solid #678b6755; }
+#chat-form { display: flex; gap: 8px; }
+#message { width: 100%; min-width: 0; padding: 12px; color: var(--ink); background: #fffef4; border: 1px solid #48685770; }
+#send { color: #fff9ed; background: var(--red); border: none; padding: 0 17px; font-weight: bold; white-space: nowrap; }
+#chat-status { min-height: 20px; margin: 8px 0; color: #813929; font-size: 13px; }
+.session-note { color: #4b6258; font-size: 11px; }
+#notice { position: fixed; top: 90px; right: 28px; max-width: min(400px, calc(100vw - 56px)); padding: 12px; background: #732c29f0; color: #fff4e2; border: 1px solid #eaa27b; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 720px) {
+  .masthead { inset: 12px 14px auto; }
+  .brand { min-width: 0; padding: 8px 12px; }
+  .brand h1 { font-size: clamp(16px, 3.6vw, 24px); letter-spacing: 0.02em; }
+  .indicators { max-width: 48%; }
+  .indicators span { padding: 5px 8px; font-size: 10px; }
+  .quest { top: 110px; left: 16px; width: 200px; padding: 10px; font-size: 12px; }
+  .controls { left: 16px; bottom: 16px; max-width: 90%; font-size: 10px; }
+  #conversation { right: 20px; bottom: 16px; padding: 15px; max-height: calc(100dvh - 135px); }
+  #messages { min-height: 80px; }
+  .interact { bottom: 78px; }
+}

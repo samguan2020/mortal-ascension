@@ -1,0 +1,8 @@
+# Core only: no memory/RAG extras, vector databases, or torch.
+hello-agents==0.2.9
+# 0.2.9 eagerly imports evaluation datasets even when using SimpleAgent only.
+huggingface-hub>=0.20.0,<1.0
+# Supports disabling upstream dotenv discovery in the cloud runtime.
+python-dotenv>=1.2.0,<2.0
+fastapi>=0.115.0,<1.0
+uvicorn>=0.30.0,<1.0

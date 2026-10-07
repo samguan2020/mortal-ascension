@@ -1,0 +1,32 @@
+# Python backend
+__pycache__/
+*.pyc
+.venv/
+venv/
+memory_data/
+logs/
+.env
+.env.local
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+*.pyo
+
+# Browser dependencies and generated output
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code Game Studios
+.claude/settings.local.json
+CLAUDE.local.md
+# Blender automatic backups (keep the editable .blend source)
+*.blend[0-9]*
