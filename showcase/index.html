@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#241a14">
+    <meta
+      name="description"
+      content="Mortal Ascension is a browser cultivation RPG with AI-driven NPC memory, hidden affinity, and recoverable dialogue."
+    >
+    <meta property="og:title" content="Mortal Ascension — AI-Driven Cultivation RPG">
+    <meta
+      property="og:description"
+      content="Explore Tingyu Inn and meet an AI-driven innkeeper who remembers, reacts, and continues the conversation."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://samguan2020.github.io/mortal-ascension/">
+    <title>Mortal Ascension — Project Showcase</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <a class="wordmark" href="#top" aria-label="Mortal Ascension home">
+        <span class="seal" aria-hidden="true">登</span>
+        <span>Mortal Ascension</span>
+      </a>
+      <nav aria-label="Showcase navigation">
+        <a href="#demo">Demo</a>
+        <a href="#intelligence">AI Features</a>
+        <a href="#stack">Tech Stack</a>
+        <a class="nav-source" href="https://github.com/samguan2020/mortal-ascension">View Source</a>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">A browser cultivation RPG</p>
+          <h1 id="hero-title">Every conversation leaves a trace.</h1>
+          <p class="hero-intro">
+            Step into Tingyu Inn as an ordinary traveler. Speak with Innkeeper Liu,
+            follow rumors of nearby sects, and discover an AI-driven character who
+            remembers your words and changes how he treats you.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#demo">Watch the demo</a>
+            <a class="button button-secondary" href="https://github.com/samguan2020/mortal-ascension">
+              View source <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </div>
+
+        <aside class="proof-panel" aria-label="Project highlights">
+          <p class="panel-kicker">Tingyu Inn · Qingshi Town</p>
+          <dl>
+            <div>
+              <dt>8 turns</dt>
+              <dd>Bounded session memory</dd>
+            </div>
+            <div>
+              <dt>30 min</dt>
+              <dd>Idle session lifetime</dd>
+            </div>
+            <div>
+              <dt>0 extra calls</dt>
+              <dd>Deterministic affinity</dd>
+            </div>
+          </dl>
+          <p class="proof-note">Private by design. Ephemeral by default.</p>
+        </aside>
+      </section>
+
+      <section class="demo section-shell" id="demo" aria-labelledby="demo-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Captured in engine</p>
+            <h2 id="demo-title">Enter the inn</h2>
+          </div>
+          <p>
+            A working Three.js scene with skinned characters, spatial interaction,
+            and live AI conversation.
+          </p>
+        </div>
+        <figure class="video-stage">
+          <video controls preload="metadata" playsinline>
+            <source src="assets/demo.mp4" type="video/mp4">
+            Your browser cannot play this video.
+            <a href="assets/demo.mp4">Download the demo video instead.</a>
+          </video>
+          <figcaption>
+            Real-time browser gameplay in Tingyu Inn. Playback is always visitor-controlled.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="intelligence section-shell" id="intelligence" aria-labelledby="intelligence-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">NPC intelligence</p>
+            <h2 id="intelligence-title">More than a stateless chat endpoint</h2>
+          </div>
+          <p>
+            Three bounded systems work together so Innkeeper Liu can feel coherent
+            without creating a permanent player profile.
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-number" aria-hidden="true">01</span>
+            <p class="feature-label">Continuity</p>
+            <h3>Session memory</h3>
+            <p class="feature-value">
+              Liu can refer back to details from the latest conversation instead
+              of treating every message as a first meeting.
+            </p>
+            <div class="implementation">
+              <strong>Implementation boundary</strong>
+              <p>Keeps the latest 8 successful turns per browser session.</p>
+            </div>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-number" aria-hidden="true">02</span>
+            <p class="feature-label">Relationship</p>
+            <h3>Hidden affinity</h3>
+            <p class="feature-value">
+              Polite, trusting, or hostile language changes how warmly Liu responds
+              and how willing he is to share sensitive clues.
+            </p>
+            <div class="implementation">
+              <strong>Implementation boundary</strong>
+              <p>Deterministic local rules; no extra model call and no visible relationship meter.</p>
+            </div>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-number" aria-hidden="true">03</span>
+            <p class="feature-label">Resilience</p>
+            <h3>Recoverable dialogue log</h3>
+            <p class="feature-value">
+              Refreshing the page restores the current conversation so the player
+              can continue reading and asking questions.
+            </p>
+            <div class="implementation">
+              <strong>Implementation boundary</strong>
+              <p>Player and NPC messages stay in server memory—never files, a database, or browser storage.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="architecture section-shell" aria-labelledby="architecture-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">System architecture</p>
+            <h2 id="architecture-title">A protected path from input to character</h2>
+          </div>
+          <p>
+            The browser owns presentation and interaction. The server owns identity,
+            session state, prompt context, limits, and model credentials.
+          </p>
+        </div>
+
+        <ol class="architecture-flow">
+          <li>
+            <span>01</span>
+            <strong>Browser</strong>
+            <small>Keyboard, gamepad, dialogue UI</small>
+          </li>
+          <li>
+            <span>02</span>
+            <strong>Three.js client</strong>
+            <small>World, animation, WebGPU/WebGL</small>
+          </li>
+          <li>
+            <span>03</span>
+            <strong>FastAPI boundary</strong>
+            <small>Validation, origin checks, budgets</small>
+          </li>
+          <li>
+            <span>04</span>
+            <strong>NPC session</strong>
+            <small>Memory, affinity, dialogue log</small>
+          </li>
+          <li>
+            <span>05</span>
+            <strong>HelloAgents</strong>
+            <small>Bounded prompt and model adapter</small>
+          </li>
+        </ol>
+
+        <div class="state-note">
+          <span class="state-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Ephemeral session state</strong>
+            <p>
+              Isolated by browser session, capped at eight turns, expired after
+              30 minutes idle, and cleared whenever the service restarts.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack section-shell" id="stack" aria-labelledby="stack-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Technology stack</p>
+            <h2 id="stack-title">Built end to end for the browser</h2>
+          </div>
+          <p>
+            A deliberately small production surface supports rendering, AI dialogue,
+            secure delivery, and repeatable validation.
+          </p>
+        </div>
+
+        <div class="stack-grid">
+          <article>
+            <p class="stack-index">A</p>
+            <h3>Client</h3>
+            <ul>
+              <li>TypeScript 5.9</li>
+              <li>Vite 7</li>
+              <li>Semantic HTML and CSS</li>
+              <li>Keyboard and gamepad input</li>
+            </ul>
+          </article>
+          <article>
+            <p class="stack-index">B</p>
+            <h3>Rendering</h3>
+            <ul>
+              <li>Three.js 0.180</li>
+              <li>WebGPU with WebGL 2 fallback</li>
+              <li>Skinned GLB characters</li>
+              <li>Animation crossfading</li>
+            </ul>
+          </article>
+          <article>
+            <p class="stack-index">C</p>
+            <h3>AI runtime</h3>
+            <ul>
+              <li>Python 3.12+</li>
+              <li>FastAPI and Uvicorn</li>
+              <li>HelloAgents 0.2.9</li>
+              <li>OpenAI-compatible providers</li>
+            </ul>
+          </article>
+          <article>
+            <p class="stack-index">D</p>
+            <h3>Safety and state</h3>
+            <ul>
+              <li>Server-only model credentials</li>
+              <li>Same-origin request enforcement</li>
+              <li>Secure HttpOnly sessions</li>
+              <li>Bounded rates, time, and output</li>
+            </ul>
+          </article>
+          <article>
+            <p class="stack-index">E</p>
+            <h3>Quality and delivery</h3>
+            <ul>
+              <li>Node and Python unit tests</li>
+              <li>Mocked Playwright walkthrough</li>
+              <li>GitHub Actions CI</li>
+              <li>Azure Container Apps</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="closing section-shell" aria-labelledby="closing-title">
+        <p class="eyebrow">The path begins at the inn</p>
+        <h2 id="closing-title">Explore how the conversation works.</h2>
+        <p>
+          Read the source, run the full stack locally, and talk with Innkeeper Liu.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/samguan2020/mortal-ascension">
+            Explore the repository
+          </a>
+          <a
+            class="button button-secondary"
+            href="https://github.com/samguan2020/mortal-ascension#run-locally-with-real-ai-dialogue"
+          >
+            Run it locally
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Mortal Ascension · A cultivation RPG built for the browser.</p>
+      <a href="#top">Return to top</a>
+    </footer>
+  </body>
+</html>

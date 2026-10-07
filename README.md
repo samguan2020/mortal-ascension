@@ -7,6 +7,13 @@ playable chapter begins in **Tingyu Inn** in Qingshi Town. Approach
 Innkeeper Liu, ask about nearby sects, and discover the first hints of the
 cultivation world.
 
+## Project showcase
+
+Watch the gameplay demo, explore the complete technology stack, and see how
+session memory, hidden affinity, and recoverable dialogue work together:
+
+**[Open the Mortal Ascension project showcase](https://samguan2020.github.io/mortal-ascension/)**
+
 ## Current game
 
 - Three.js with WebGPU and WebGL fallback.
