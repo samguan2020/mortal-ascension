@@ -1,8 +1,9 @@
 """Same-origin runtime; production never loads dotenv files or local credentials.
 
 Required environment: SITE_PASSWORD (random, >=32 characters), PUBLIC_ORIGIN
-(HTTPS origin), LLM_MODEL_ID, LLM_BASE_URL (HTTPS OpenAI-compatible endpoint),
-LLM_API_KEY. Optional: LLM_TIMEOUT_SECONDS (20), CHAT_TIMEOUT_SECONDS (25).
+(HTTPS origin), LLM_MODEL_ID, LLM_BASE_URL, LLM_API_KEY. Optional:
+LLM_PROVIDER (openai_compatible), LLM_API_VERSION (required for azure_openai),
+LLM_TIMEOUT_SECONDS (20), CHAT_TIMEOUT_SECONDS (25).
 Configuration is validated at startup without a paid provider probe; health
 reports configured capability, not verified provider availability.
 
@@ -23,6 +24,7 @@ import binascii
 import ipaddress
 import logging
 import os
+import re
 import secrets
 import time
 from collections import deque
@@ -58,6 +60,8 @@ class Settings:
     llm_model_id: str
     llm_base_url: str = field(repr=False)
     llm_api_key: str = field(repr=False)
+    llm_provider: str = "openai_compatible"
+    llm_api_version: str | None = None
     static_dir: Path | None = Path("/app/web/dist")
     local_development: bool = False
     llm_timeout_seconds: int = 20
@@ -87,6 +91,8 @@ class Settings:
                 llm_model_id=os.environ["LLM_MODEL_ID"],
                 llm_base_url=os.environ["LLM_BASE_URL"],
                 llm_api_key=os.environ["LLM_API_KEY"],
+                llm_provider=os.environ.get("LLM_PROVIDER", "openai_compatible"),
+                llm_api_version=os.environ.get("LLM_API_VERSION") or None,
                 llm_timeout_seconds=int(os.environ.get("LLM_TIMEOUT_SECONDS", "20")),
                 chat_timeout_seconds=float(os.environ.get("CHAT_TIMEOUT_SECONDS", "25")),
             )
@@ -109,6 +115,15 @@ class Settings:
                 "changeme", "placeholder", "your-api-key", "your_api_key", "test", "none",
             }:
                 raise ValueError(f"{name} must contain real provider configuration")
+        if self.llm_provider not in {"openai_compatible", "azure_openai"}:
+            raise ValueError("LLM_PROVIDER must be openai_compatible or azure_openai")
+        if self.llm_provider == "azure_openai":
+            if not self.llm_api_version or not re.fullmatch(
+                r"\d{4}-\d{2}-\d{2}(?:-preview)?", self.llm_api_version
+            ):
+                raise ValueError("Azure OpenAI requires a valid LLM_API_VERSION")
+        elif self.llm_api_version is not None:
+            raise ValueError("LLM_API_VERSION is only valid for azure_openai")
         for name, value in (("PUBLIC_ORIGIN", self.public_origin), ("LLM_BASE_URL", self.llm_base_url)):
             try:
                 url = urlsplit(value)
@@ -128,6 +143,8 @@ class Settings:
                         valid = valid and url.scheme == "https" and not url.path and value == f"https://{url.netloc}"
                 else:
                     valid = valid and url.scheme == "https"
+                    if self.llm_provider == "azure_openai":
+                        valid = valid and url.path in {"", "/"}
                 if not valid:
                     raise ValueError
             except ValueError:
@@ -166,13 +183,40 @@ def make_agent_factory(settings: Settings) -> AgentFactory:
     """Construct core HelloAgents only, with no retries or network startup call."""
     os.environ["PYTHON_DOTENV_DISABLED"] = "1"
     from hello_agents import HelloAgentsLLM, SimpleAgent
+    from openai import AzureOpenAI
 
     class NoRetryLLM(HelloAgentsLLM):
         def _create_client(self):
             # HelloAgents 0.2.9 does not forward retry settings to OpenAI.
             return super()._create_client().with_options(max_retries=0)
 
-    llm = NoRetryLLM(
+    class AzureOpenAILLM(HelloAgentsLLM):
+        def _create_client(self):
+            return AzureOpenAI(
+                api_version=settings.llm_api_version,
+                azure_endpoint=self.base_url,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                max_retries=0,
+            )
+
+        def invoke(self, messages: list[dict[str, str]], **kwargs) -> str:
+            response = self._client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=kwargs.get("temperature", self.temperature),
+                max_completion_tokens=kwargs.get(
+                    "max_completion_tokens", kwargs.get("max_tokens", self.max_tokens)
+                ),
+                **{
+                    key: value for key, value in kwargs.items()
+                    if key not in {"temperature", "max_tokens", "max_completion_tokens"}
+                },
+            )
+            return response.choices[0].message.content
+
+    llm_class = AzureOpenAILLM if settings.llm_provider == "azure_openai" else NoRetryLLM
+    llm = llm_class(
         model=settings.llm_model_id,
         api_key=settings.llm_api_key,
         base_url=settings.llm_base_url,

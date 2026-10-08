@@ -71,7 +71,13 @@ class DeploymentTests(unittest.TestCase):
                 return {}
             return {"properties": {"provisioningState": "Succeeded", "latestReadyRevisionName": "ready"}}
 
-        values = {"LLM_API_KEY": secret_key, "LLM_MODEL_ID": "model", "LLM_BASE_URL": "https://example.org/v1"}
+        values = {
+            "LLM_API_KEY": secret_key,
+            "LLM_MODEL_ID": "model",
+            "LLM_BASE_URL": "https://example.org/",
+            "LLM_PROVIDER": "azure_openai",
+            "LLM_API_VERSION": "2024-12-01-preview",
+        }
         output = io.StringIO()
         with patch.object(deployment, "cli", side_effect=cli), patch.object(deployment, "arm", side_effect=arm), \
                 patch.object(deployment, "dotenv_values", return_value=values), contextlib.redirect_stdout(output):
@@ -81,12 +87,36 @@ class DeploymentTests(unittest.TestCase):
         self.assertFalse(properties["configuration"]["ingress"]["allowInsecure"])
         self.assertEqual(properties["template"]["scale"]["maxReplicas"], 1)
         self.assertEqual(properties["configuration"]["secrets"][0]["value"], old_password)
+        environment = properties["template"]["containers"][0]["env"]
+        self.assertIn({"name": "LLM_PROVIDER", "value": "azure_openai"}, environment)
+        self.assertIn(
+            {"name": "LLM_API_VERSION", "value": "2024-12-01-preview"}, environment
+        )
         self.assertNotIn(old_password, output.getvalue())
         self.assertNotIn(secret_key, output.getvalue())
 
     def test_missing_credentials_stop_before_build_or_cloud_requests(self):
         with patch.object(deployment, "dotenv_values", return_value={}), patch.object(deployment, "cli") as cli:
             with self.assertRaisesRegex(RuntimeError, "Missing backend configuration"):
+                deployment.deploy(options())
+            cli.assert_not_called()
+
+        values = {
+            "LLM_API_KEY": "test-only-key",
+            "LLM_MODEL_ID": "deployment",
+            "LLM_BASE_URL": "https://example.org/",
+            "LLM_PROVIDER": "azure_openai",
+        }
+        with patch.object(deployment, "dotenv_values", return_value=values), \
+                patch.object(deployment, "cli") as cli:
+            with self.assertRaisesRegex(RuntimeError, "LLM_API_VERSION"):
+                deployment.deploy(options())
+            cli.assert_not_called()
+
+        values["LLM_PROVIDER"] = "unsupported"
+        with patch.object(deployment, "dotenv_values", return_value=values), \
+                patch.object(deployment, "cli") as cli:
+            with self.assertRaisesRegex(RuntimeError, "LLM_PROVIDER"):
                 deployment.deploy(options())
             cli.assert_not_called()
 

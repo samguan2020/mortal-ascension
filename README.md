@@ -147,6 +147,22 @@ The local development path keeps model credentials in Python and binds both
 servers to loopback. Manual dialogue uses the provider values in the private
 `backend/.env` file and can incur model charges. Never commit or paste that file.
 
+For an Azure OpenAI deployment, configure:
+
+```dotenv
+LLM_PROVIDER=azure_openai
+LLM_API_VERSION=2024-12-01-preview
+LLM_BASE_URL=https://<resource>.openai.azure.com/
+LLM_MODEL_ID=<deployment-name>
+LLM_API_KEY=<resource-key>
+```
+
+For another OpenAI-compatible provider, set
+`LLM_PROVIDER=openai_compatible`, omit `LLM_API_VERSION`, and use that
+provider's HTTPS v1 base URL. Azure mode uses `max_completion_tokens`;
+OpenAI-compatible mode uses `max_tokens`. Both remain capped by the server's
+256-token output limit.
+
 Start the FastAPI backend in the first terminal:
 
 ```powershell
@@ -154,7 +170,7 @@ Set-Location D:\Repos\mortal-ascension
 .\.venv\Scripts\python.exe tools\run_local.py
 ```
 
-This reads only `LLM_API_KEY`, `LLM_MODEL_ID` and `LLM_BASE_URL`, then listens on
+This reads only the documented `LLM_*` provider values, then listens on
 `http://127.0.0.1:8000`. It does not probe the provider or spend tokens during
 startup.
 

@@ -113,6 +113,13 @@ def deploy(args: argparse.Namespace) -> str:
     """Deploy a password-protected, single-replica app using managed image pulls."""
     values = dotenv_values(ROOT / "backend" / ".env")
     required = ("LLM_API_KEY", "LLM_MODEL_ID", "LLM_BASE_URL")
+    provider = str(values.get("LLM_PROVIDER") or "openai_compatible")
+    if provider not in {"openai_compatible", "azure_openai"}:
+        raise RuntimeError("LLM_PROVIDER must be openai_compatible or azure_openai")
+    if provider == "azure_openai":
+        required += ("LLM_API_VERSION",)
+    elif values.get("LLM_API_VERSION"):
+        raise RuntimeError("LLM_API_VERSION is only valid for azure_openai")
     missing = [name for name in required if not values.get(name)]
     if missing:
         raise RuntimeError(f"Missing backend configuration: {', '.join(missing)}")
@@ -166,8 +173,13 @@ def deploy(args: argparse.Namespace) -> str:
         {"name": "LLM_API_KEY", "secretRef": "llm-api-key"},
         {"name": "LLM_MODEL_ID", "value": values["LLM_MODEL_ID"]},
         {"name": "LLM_BASE_URL", "value": values["LLM_BASE_URL"]},
+        {"name": "LLM_PROVIDER", "value": provider},
         {"name": "PUBLIC_ORIGIN", "value": origin},
     ]
+    if values.get("LLM_API_VERSION"):
+        environment_variables.append(
+            {"name": "LLM_API_VERSION", "value": values["LLM_API_VERSION"]}
+        )
     probe = {
         "httpGet": {"path": "/healthz", "port": 8000},
         "periodSeconds": 10, "timeoutSeconds": 3,

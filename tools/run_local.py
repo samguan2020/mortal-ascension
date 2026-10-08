@@ -32,6 +32,8 @@ def load_local_settings(config_path: Path, frontend_port: int) -> Settings:
         llm_model_id=str(values["LLM_MODEL_ID"]),
         llm_base_url=str(values["LLM_BASE_URL"]),
         llm_api_key=str(values["LLM_API_KEY"]),
+        llm_provider=str(values.get("LLM_PROVIDER") or "openai_compatible"),
+        llm_api_version=str(values["LLM_API_VERSION"]) if values.get("LLM_API_VERSION") else None,
         static_dir=None,
         local_development=True,
     )
@@ -49,7 +51,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config", type=Path, default=DEFAULT_CONFIG,
-        help="Private dotenv file containing the three LLM provider values",
+        help="Private dotenv file containing the LLM provider configuration",
     )
     return parser.parse_args()
 

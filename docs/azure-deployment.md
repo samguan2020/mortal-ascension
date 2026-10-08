@@ -108,10 +108,14 @@ Set-Location D:\Repos\mortal-ascension
   --subscription fd6715f9-cb85-43c6-ae95-7a01434bb7d6
 ```
 
-The tool reads only `LLM_API_KEY`, `LLM_MODEL_ID`, and `LLM_BASE_URL` from the
-local `backend/.env`; it never uploads that file. The URL must use HTTPS. The
-build context is created from an explicit allowlist and deleted after success or
-failure. Image tags contain UTC timestamps for version tracing.
+The tool reads only the documented `LLM_*` provider values from the local
+`backend/.env`; it never uploads that file. Azure OpenAI uses
+`LLM_PROVIDER=azure_openai`, an `LLM_API_VERSION`, and the resource root URL.
+Other OpenAI-compatible services use `LLM_PROVIDER=openai_compatible`, omit the
+API version, and provide their HTTPS v1 base URL. The API key is injected as a
+Container App secret; the remaining provider values are non-secret environment
+variables. The build context is created from an explicit allowlist and deleted
+after success or failure. Image tags contain UTC timestamps for version tracing.
 
 To reuse a verified image, such as for an application-code rollback:
 

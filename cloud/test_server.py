@@ -385,6 +385,14 @@ class CloudTests(unittest.TestCase):
             {"llm_api_key": ""}, {"llm_api_key": "your-api-key"}, {"llm_model_id": ""},
             {"llm_base_url": "https://user:secret@provider.example"},
             {"llm_base_url": "http://provider.example"}, {"llm_base_url": "https://host:bad"},
+            {"llm_provider": "unsupported"},
+            {"llm_provider": "azure_openai"},
+            {
+                "llm_provider": "azure_openai",
+                "llm_api_version": "invalid",
+                "llm_base_url": "https://provider.example/",
+            },
+            {"llm_api_version": "2024-12-01-preview"},
             {"llm_timeout_seconds": 0}, {"chat_timeout_seconds": float("nan")},
             {"max_concurrent": 99}, {"static_dir": Path(self.temp.name) / "missing"},
         ]
@@ -409,7 +417,20 @@ class CloudTests(unittest.TestCase):
         self.assertTrue(settings.local_development)
         self.assertEqual(settings.public_origin, LOCAL_ORIGIN)
         self.assertIsNone(settings.static_dir)
+        self.assertEqual(settings.llm_provider, "openai_compatible")
         self.assertFalse(hasattr(settings, "obsolete_value"))
+
+        config.write_text(
+            "LLM_API_KEY=local-provider-key\n"
+            "LLM_MODEL_ID=azure-deployment\n"
+            "LLM_BASE_URL=https://azure.example/\n"
+            "LLM_PROVIDER=azure_openai\n"
+            "LLM_API_VERSION=2024-12-01-preview\n",
+            encoding="utf-8",
+        )
+        azure_settings = load_local_settings(config, 5174)
+        self.assertEqual(azure_settings.llm_provider, "azure_openai")
+        self.assertEqual(azure_settings.llm_api_version, "2024-12-01-preview")
 
         config.write_text("LLM_API_KEY=only-one-value\n", encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "Missing local provider configuration"):
@@ -461,6 +482,26 @@ class CloudTests(unittest.TestCase):
         self.assertEqual(generate.call_args.kwargs["max_tokens"], self.settings.max_output_tokens)
         self.assertEqual(generate.call_args.kwargs["messages"][0]["content"],
                          create_system_prompt(NPC, NPC_ROLES[NPC]))
+
+    def test_azure_openai_adapter_uses_deployment_api_and_bounded_completion_tokens(self):
+        completion = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="azure completion"))],
+        )
+        settings = replace(
+            self.settings,
+            llm_provider="azure_openai",
+            llm_api_version="2024-12-01-preview",
+            llm_base_url="https://azure.example/",
+        )
+        with patch("openai.resources.chat.completions.Completions.create", return_value=completion) as generate:
+            agent = make_agent_factory(settings)(NPC)
+            self.assertEqual(agent.reply("hello"), "azure completion")
+        generate.assert_called_once()
+        self.assertEqual(generate.call_args.kwargs["model"], settings.llm_model_id)
+        self.assertEqual(
+            generate.call_args.kwargs["max_completion_tokens"], settings.max_output_tokens
+        )
+        self.assertNotIn("max_tokens", generate.call_args.kwargs)
 
     def test_chunked_body_limit_is_enforced_without_content_length(self):
         reached_app = []
