@@ -278,24 +278,24 @@ Also populate the `## Engine Specialists` section in `technical-preferences.md` 
 **For Unreal:**
 ```markdown
 ## Engine Specialists
-- **Primary**: unreal-specialist
-- **Language/Code Specialist**: ue-blueprint-specialist (Blueprint graphs) or unreal-specialist (C++)
-- **Shader Specialist**: unreal-specialist (no dedicated shader specialist — primary covers materials)
-- **UI Specialist**: ue-umg-specialist (UMG widgets, CommonUI, input routing, widget styling)
-- **Additional Specialists**: ue-gas-specialist (Gameplay Ability System, attributes, gameplay effects), ue-replication-specialist (property replication, RPCs, client prediction, netcode)
-- **Routing Notes**: Invoke primary for C++ architecture and broad engine decisions. Invoke Blueprint specialist for Blueprint graph architecture and BP/C++ boundary design. Invoke GAS specialist for all ability and attribute code. Invoke replication specialist for any multiplayer or networked systems. Invoke UMG specialist for all UI implementation.
+- **Primary**: technical-director
+- **Language/Code Specialist**: engine-programmer
+- **Shader Specialist**: technical-artist
+- **UI Specialist**: ui-programmer
+- **Additional Specialists**: network-programmer (replication and netcode)
+- **Routing Notes**: Use the general technical roles for Unreal work; this project does not install Unreal-specific Copilot agents.
 
 ### File Extension Routing
 
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (.cpp, .h files) | unreal-specialist |
-| Shader / material files (.usf, .ush, Material assets) | unreal-specialist |
-| UI / screen files (.umg, UMG Widget Blueprints) | ue-umg-specialist |
-| Scene / prefab / level files (.umap, .uasset) | unreal-specialist |
-| Native extension / plugin files (Plugin .uplugin, modules) | unreal-specialist |
-| Blueprint graphs (.uasset BP classes) | ue-blueprint-specialist |
-| General architecture review | unreal-specialist |
+| Game code (.cpp, .h files) | engine-programmer |
+| Shader / material files (.usf, .ush, Material assets) | technical-artist |
+| UI / screen files (.umg, UMG Widget Blueprints) | ui-programmer |
+| Scene / prefab / level files (.umap, .uasset) | engine-programmer |
+| Native extension / plugin files (Plugin .uplugin, modules) | engine-programmer |
+| Blueprint graphs (.uasset BP classes) | engine-programmer |
+| General architecture review | technical-director |
 ```
 
 ### Collaborative Step

@@ -20,7 +20,7 @@ not instructions to provision another deployment.
 ## Assistant runtime
 
 - GitHub Copilot: read [.github/copilot-instructions.md](.github/copilot-instructions.md).
-  The 49 roles and 73 skills live locally under `.github/`.
+  The 44 roles and 73 skills live locally under `.github/`.
 - Read referenced documents explicitly; `@file` is not a Copilot import.
 
 ## Standards and approvals

@@ -52,7 +52,7 @@ Use the agent tool (runSubagent) to spawn each team member as a subagent:
 - `agentName: ux-designer` — User flows, wireframes, accessibility, input handling
 - `agentName: ui-programmer` — UI framework, screens, widgets, data binding
 - `agentName: art-director` — Visual style, layout polish, art bible consistency
-- `agentName: [UI engine specialist]` — Engine-specific UI pattern validation (e.g., unity-ui-specialist, ue-umg-specialist, godot-specialist)
+- `agentName: [UI engine specialist]` — Engine-specific UI pattern validation (e.g., unity-ui-specialist or godot-specialist)
 - `agentName: accessibility-specialist` — Accessibility compliance audit
 
 Always provide full context in each agent's prompt (feature requirements, existing UI patterns, platform targets). Launch independent agents in parallel where the pipeline allows it (e.g., Phase 4 review agents can run simultaneously).

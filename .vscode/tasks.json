@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Commit all cleaned changes",
+			"type": "shell",
+			"command": "& 'C:\\Program Files\\Git\\cmd\\git.exe' add -A; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & 'C:\\Program Files\\Git\\cmd\\git.exe' commit -m \"Remove Unreal workflow and consolidate Blender pipeline\" -m \"Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\"",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Create cleaned commit",
+			"type": "shell",
+			"command": "$trailer = 'Co-authored-by: Copilot ' + [char]60 + '223556219+Copilot@users.noreply.github.com' + [char]62; & 'C:\\Program Files\\Git\\cmd\\git.exe' add -A; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & 'C:\\Program Files\\Git\\cmd\\git.exe' commit -m 'Remove Unreal workflow and consolidate Blender pipeline' -m $trailer",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

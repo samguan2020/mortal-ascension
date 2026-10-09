@@ -30,3 +30,6 @@ Thumbs.db
 CLAUDE.local.md
 # Blender automatic backups (keep the editable .blend source)
 *.blend[0-9]*
+
+# Blender cinematic renders; editable .blend scenes remain source assets
+cinematics/blender/renders/

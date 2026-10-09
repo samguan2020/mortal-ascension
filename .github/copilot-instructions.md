@@ -1,6 +1,6 @@
 # Mortal Ascension - GitHub Copilot runtime contract
 
-This standalone game uses 49 custom agents in `agents/` and 73 skills in
+This standalone game uses 44 custom agents in `agents/` and 73 skills in
 `skills/` with GitHub Copilot in VS Code. These are development roles, not
 in-game NPCs. The tooling's MIT notice is in
 [STUDIO-LICENSE](STUDIO-LICENSE).
