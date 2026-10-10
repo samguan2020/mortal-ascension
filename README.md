@@ -9,10 +9,29 @@ cultivation world.
 
 ## Project showcase
 
-Watch the gameplay demo, explore the complete technology stack, and see how
+Watch the cinematic short and gameplay demo, explore the technology stack, and see how
 session memory, hidden affinity, and recoverable dialogue work together:
 
 **[Open the Mortal Ascension project showcase](https://samguan2020.github.io/mortal-ascension/)**
+
+### 凡骨登仙 · Mortal Ascension — cinematic short
+
+**凡骨入道，一念登仙。**
+
+[Watch the latest short film](https://samguan2020.github.io/mortal-ascension/#cinematic)
+or [download the MP4](showcase/assets/mortal-ascension-short.mp4).
+The 14.625-second, 1080p24 short features the long-haired traveler, blue-green
+mountains and bronze-jade gate, Clipchamp Mandarin narration, and an original
+synthesized score. It is an offline Blender 3.6 / Eevee visual study, **not
+real-time gameplay**. The character has authored secondary hair motion, not a
+full gameplay animation rig.
+
+The showcase includes optional English/Chinese subtitles and a bilingual
+transcript. Playback is visitor-controlled. Editable cinematic scenes use
+Git LFS; local intermediate renders remain ignored. Only the approved final
+film, poster and subtitle files are copied into `showcase/assets/` for Pages.
+See the [cinematic workflow](.github/docs/directory-structure.md#cinematic-visual-test)
+for generation and validation commands.
 
 ## Current game
 

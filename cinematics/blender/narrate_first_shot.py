@@ -5,6 +5,8 @@
     python -B cinematics\\blender\\narrate_first_shot.py --prepare --variant clipchamp \
 --narration-audio "C:\\Users\\xingu\\Downloads\\Video Project 4.m4a" --cuts 4.46 7.24
     python -B cinematics\\blender\\narrate_first_shot.py --assemble --variant clipchamp
+    python -B cinematics\\blender\\narrate_first_shot.py --prepare --variant flowing
+    python -B cinematics\\blender\\narrate_first_shot.py --assemble --variant flowing
 
 Preparation never needs the source video. Assembly consumes the verified assets
 without resynthesizing them or needing the imported original, and refuses to
@@ -46,6 +48,8 @@ TARGET_LUFS = -18
 TRUE_PEAK = -2
 NORMALIZATION_PEAK = -2.5
 BLACK_FRAMES = 6
+CLIPCHAMP_TIMING_SHA256 = "b168b62d032dc948b7c59c11311f5fa6f7c22655150fba0743eebd06b67690e1"
+CLIPCHAMP_INPUT_SHA256 = "bc7af69c56c87524720317bce01f36cb62f7873955f542a9f100c3db184eedb2"
 
 
 def run(command):
@@ -138,7 +142,7 @@ def schedule_takes(takes, prefix="narrated", channels=1):
         length = len(samples) / channels / SAMPLE_RATE
         if index == 3:
             title_ready = (max(10, segments[1]["end"] + .85)
-                           if prefix == "clipchamp" else 10)
+                           if prefix in ("clipchamp", "flowing") else 10)
             start = max(start, title_ready + .2)
         start_sample = round(start * SAMPLE_RATE)
         start = start_sample / SAMPLE_RATE
@@ -173,17 +177,17 @@ def split_recording(samples, cuts):
     return takes, boundaries
 
 
-def prepare_recording(folder, source, cuts):
+def prepare_recording(folder, source, cuts, prefix="clipchamp"):
     if not source.is_file() or source.suffix.lower() not in (".m4a", ".wav"):
         raise ValueError(f"Narration must be an existing local M4A or WAV file: {source}")
     if not 0 < source.stat().st_size <= 64 * 1024 * 1024:
         raise ValueError("Narration input must be nonempty and at most 64 MiB")
     original = digest(source)
-    archived = folder / f"clipchamp_input{source.suffix.lower()}"
+    archived = folder / f"{prefix}_input{source.suffix.lower()}"
     shutil.copyfile(source, archived)
     if digest(archived) != original:
         raise RuntimeError("Narration changed while being copied")
-    decoded = folder / "clipchamp_input_decoded.wav"
+    decoded = folder / f"{prefix}_input_decoded.wav"
     result = ffmpeg("-n", "-protocol_whitelist", "file,pipe", "-i", archived,
                     "-map", "0:a:0", "-vn", "-ar", SAMPLE_RATE, "-ac", 2,
                     "-c:a", "pcm_s16le", decoded)
@@ -192,7 +196,7 @@ def prepare_recording(folder, source, cuts):
             raise ValueError("Decoded narration must be nonempty and no longer than 20 seconds")
     samples = read_pcm(decoded, 2)
     takes, boundaries = split_recording(samples, cuts)
-    segments, frames = schedule_takes(takes, "clipchamp", 2)
+    segments, frames = schedule_takes(takes, prefix, 2)
     for index, (segment, take) in enumerate(zip(segments, takes), 1):
         path = folder / segment["wav"]
         stored = array("h", take)
@@ -204,7 +208,7 @@ def prepare_recording(folder, source, cuts):
             audio.setframerate(SAMPLE_RATE)
             audio.writeframes(stored.tobytes())
         read_pcm(path, 2)
-        (folder / f"clipchamp_sentence_{index}.txt").write_text(
+        (folder / f"{prefix}_sentence_{index}.txt").write_text(
             segment["text"], encoding="utf-8")
         segment["source_start_sample"] = boundaries[index - 1]
         segment["source_end_sample"] = boundaries[index]
@@ -224,6 +228,33 @@ def prepare_recording(folder, source, cuts):
         "timing_basis": "Explicit supplied cuts; text and sentence boundaries not "
                         "verified by listening or ASR; voice preset unverified",
     }
+    return segments, takes, frames, provenance
+
+
+def prepare_flowing_voice(folder):
+    """Import only the approved archive, proving identical decoded samples and timing."""
+    timing = RENDERS / "clipchamp_timing.json"
+    source = RENDERS / "clipchamp_input.m4a"
+    if digest(timing) != CLIPCHAMP_TIMING_SHA256 or digest(source) != CLIPCHAMP_INPUT_SHA256:
+        raise ValueError("Approved Clipchamp archive or timing changed; refusing voice substitution")
+    previous = json.loads(timing.read_text(encoding="utf-8"))
+    decoded = RENDERS / "clipchamp_input_decoded.wav"
+    if digest(decoded) != previous["narration_source"]["decoded_sha256"]:
+        raise ValueError("Archived decoded narration changed")
+    segments, takes, frames, provenance = prepare_recording(
+        folder, source, previous["narration_source"]["cuts_seconds"], "flowing")
+    if read_pcm(folder / provenance["decoded_wav"], 2) != read_pcm(decoded, 2):
+        raise ValueError("Flowing narration does not preserve the exact approved decoded PCM")
+    keys = ("text", "start_sample", "sample_count", "start", "end", "duration")
+    if frames != previous["frames"] or any(
+            any(current[key] != old[key] for key in keys)
+            for current, old in zip(segments, previous["segments"])):
+        raise ValueError("Flowing narration changed the approved sentence timing")
+    if any(take[::2] != take[1::2] for take in takes):
+        raise ValueError("Approved flowing speech must be dual-mono to remain centered unchanged")
+    provenance["approved_timing_sha256"] = CLIPCHAMP_TIMING_SHA256
+    provenance["decoded_pcm_exact_match"] = True
+    provenance["centered_dual_mono"] = True
     return segments, takes, frames, provenance
 
 
@@ -287,7 +318,17 @@ def create_mix(folder, segments, takes, frames, prefix="narrated", channels=1):
             for channel in range(2):
                 sample = take[index * channels + (channel if channels == 2 else 0)]
                 voice[offset + index * 2 + channel] = sample / 32768 * gain
-    music, events = synthesize_music(duration)
+    if prefix == "flowing":
+        from compose_flowing_score import compose
+        stems, score, evidence = compose(duration)
+        for name, samples in stems.items():
+            write_pcm(folder / f"flowing_music_{name}.wav", samples.ravel())
+        evidence["generator_sha256"] = digest(HERE / "compose_flowing_score.py")
+        (folder / "flowing_score.json").write_text(
+            json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+        music, events = array("d", score.ravel()), evidence["events"]
+    else:
+        music, events = synthesize_music(duration)
     ducked = array("d", music)
     for index in range(len(voice) // 2):
         time = index / SAMPLE_RATE
@@ -296,7 +337,7 @@ def create_mix(folder, segments, takes, frames, prefix="narrated", channels=1):
             * smooth((segment["end"] + .40 - time) / .40)
             for segment in segments
         )
-        gain = 1 - .80 * activity
+        gain = 1 - (.78 if prefix == "flowing" else .80) * activity
         ducked[index * 2] *= gain
         ducked[index * 2 + 1] *= gain
     for segment in segments:
@@ -448,7 +489,7 @@ def video_filters(report):
 def assembly_command(report, destination):
     prefix = report.get("variant", "narrated")
     command = [imageio_ffmpeg.get_ffmpeg_exe(), "-hide_banner", "-nostdin", "-n",
-               "-i", str(SOURCE)]
+               "-i", str(variant_source(prefix))]
     for name in ("intro", "title", "caption_1", "caption_2", "caption_3"):
         command.extend(["-loop", "1", "-framerate", str(FPS), "-i",
                         str(RENDERS / f"{prefix}_{name}.png")])
@@ -463,9 +504,15 @@ def assembly_command(report, destination):
 
 
 def variant_output(variant):
-    if variant not in ("narrated", "clipchamp"):
+    if variant not in ("narrated", "clipchamp", "flowing"):
         raise ValueError(f"Unknown narration variant: {variant}")
-    return OUTPUT if variant == "narrated" else RENDERS / "mortal_ascension_clipchamp.mp4"
+    return OUTPUT if variant == "narrated" else RENDERS / f"mortal_ascension_{variant}.mp4"
+
+
+def variant_source(variant):
+    """Select the new silent film only for the explicitly requested flowing variant."""
+    variant_output(variant)
+    return RENDERS / "bronze_jade_flowing.mp4" if variant == "flowing" else SOURCE
 
 
 def validate_options(variant, preparing, narration_audio, cuts):
@@ -484,12 +531,16 @@ def validate_options(variant, preparing, narration_audio, cuts):
 def prepare(variant="narrated", narration_audio=None, cuts=None):
     validate_options(variant, True, narration_audio, cuts)
     output = variant_output(variant)
+    if variant == "flowing" and output.exists():
+        raise FileExistsError(f"Preserving completed flowing film and its prepared assets: {output}")
     RENDERS.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"{variant}_prepare_", dir=RENDERS) as staging:
         folder = Path(staging)
         provenance = None
         if variant == "narrated":
             segments, takes, frames = prepare_voice(folder)
+        elif variant == "flowing":
+            segments, takes, frames, provenance = prepare_flowing_voice(folder)
         else:
             segments, takes, frames, provenance = prepare_recording(folder, narration_audio, cuts)
         events = create_mix(folder, segments, takes, frames, variant,
@@ -506,7 +557,7 @@ def prepare(variant="narrated", narration_audio=None, cuts=None):
             "synthetic_voice": None if provenance else True,
             "speech_rate": None if provenance else -1,
             "score": "Original synthesized D-major pentatonic plucks and warm airy drone",
-            "source": str(SOURCE), "output": str(output), "fps": FPS,
+            "source": str(variant_source(variant)), "output": str(output), "fps": FPS,
             "frames": frames, "duration": frames / FPS, "black_frames": BLACK_FRAMES,
             "end_card_start": title_start, "end_card_fully_visible": title_start + .8,
             "segments": segments, "music_notes": events, "loudness": loudness,
@@ -516,6 +567,10 @@ def prepare(variant="narrated", narration_audio=None, cuts=None):
         }
         if provenance:
             report["narration_source"] = provenance
+        if variant == "flowing":
+            from compose_flowing_score import DESCRIPTION
+            report["score"] = DESCRIPTION
+            report["score_evidence"] = "flowing_score.json"
         report["ffmpeg_command"] = subprocess.list2cmdline(assembly_command(report, output))
         timing = folder / f"{variant}_timing.json"
         timing.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -526,7 +581,7 @@ def prepare(variant="narrated", narration_audio=None, cuts=None):
         timing.replace(RENDERS / timing.name)
     print(f"PREPARE_PASS: {report['duration']:.6f}s, {frames} frames at {FPS} fps; "
           f"end hold {report['duration'] - segments[-1]['end']:.3f}s", flush=True)
-    print(f"SOURCE (not required for prepare): {SOURCE}\nOUTPUT: {output}\n"
+    print(f"SOURCE (not required for prepare): {variant_source(variant)}\nOUTPUT: {output}\n"
           f"ASSEMBLE: {report['assembly_command']}\nREPORT: {RENDERS / timing.name}",
           flush=True)
 
@@ -552,6 +607,7 @@ def validate_video(path, duration, frames, audio):
 
 def assemble(variant="narrated"):
     output = variant_output(variant)
+    source = variant_source(variant)
     if output.exists():
         raise FileExistsError(f"Preserving existing narrated film; archive it before retrying: {output}")
     timing = RENDERS / f"{variant}_timing.json"
@@ -567,10 +623,10 @@ def assemble(variant="narrated"):
             raise ValueError(f"Invalid prepared asset name: {name}")
         if digest(RENDERS / name) != expected:
             raise ValueError(f"Prepared asset changed: {name}; run --prepare again")
-    if not SOURCE.is_file():
-        raise FileNotFoundError(f"Render FirstShot_Costume.blend to this silent source first: {SOURCE}")
-    original = digest(SOURCE)
-    validate_video(SOURCE, 10, 240, False)
+    if not source.is_file():
+        raise FileNotFoundError(f"Render the approved silent 10-second source first: {source}")
+    original = digest(source)
+    validate_video(source, 10, 240, False)
     with tempfile.TemporaryDirectory(prefix=f"{variant}_assemble_", dir=RENDERS) as staging:
         temporary = Path(staging) / f"{variant}_film.mp4"
         run(assembly_command(report, temporary))
@@ -588,7 +644,7 @@ def assemble(variant="narrated"):
                     rf"lavfi.signalstats.{key}=([\d.]+)", black.stderr)]
                 if values != [expected] * BLACK_FRAMES:
                     raise ValueError(f"Expected six neutral black frames; {key} was {values}")
-        if digest(SOURCE) != original:
+        if digest(source) != original:
             raise RuntimeError("Source changed during assembly; output was not published")
         # On Windows rename is atomic and fails if another process published first.
         temporary.rename(output)
@@ -601,7 +657,7 @@ def main():
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--prepare", action="store_true")
     mode.add_argument("--assemble", action="store_true")
-    parser.add_argument("--variant", choices=("narrated", "clipchamp"), default="narrated")
+    parser.add_argument("--variant", choices=("narrated", "clipchamp", "flowing"), default="narrated")
     parser.add_argument("--narration-audio", type=Path,
                         help="Local M4A/WAV, required for Clipchamp preparation")
     parser.add_argument("--cuts", type=float, nargs=2, metavar=("FIRST", "SECOND"),

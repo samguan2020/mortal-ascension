@@ -6,15 +6,17 @@
     <meta name="theme-color" content="#241a14">
     <meta
       name="description"
-      content="Mortal Ascension is a browser cultivation RPG with AI-driven NPC memory, hidden affinity, and recoverable dialogue."
+      content="Watch the 凡骨登仙 / Mortal Ascension cinematic short and explore a browser cultivation RPG with AI-driven NPC memory, hidden affinity, and recoverable dialogue."
     >
     <meta property="og:title" content="Mortal Ascension — AI-Driven Cultivation RPG">
     <meta
       property="og:description"
-      content="Explore Tingyu Inn and meet an AI-driven innkeeper who remembers, reacts, and continues the conversation."
+      content="Watch an original cultivation cinematic, then explore Tingyu Inn and meet an AI-driven innkeeper who remembers and reacts."
     >
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://samguan2020.github.io/mortal-ascension/">
+    <meta property="og:image" content="https://samguan2020.github.io/mortal-ascension/assets/mortal-ascension-short.jpg">
+    <meta property="og:image:alt" content="A long-haired traveler looks toward a bronze and jade gate above a sea of clouds.">
     <title>Mortal Ascension — Project Showcase</title>
     <link rel="stylesheet" href="styles.css">
   </head>
@@ -27,6 +29,7 @@
         <span>Mortal Ascension</span>
       </a>
       <nav aria-label="Showcase navigation">
+        <a href="#cinematic">Short Film</a>
         <a href="#demo">Demo</a>
         <a href="#intelligence">AI Features</a>
         <a href="#stack">Tech Stack</a>
@@ -45,7 +48,8 @@
             remembers your words and changes how he treats you.
           </p>
           <div class="hero-actions">
-            <a class="button button-primary" href="#demo">Watch the demo</a>
+            <a class="button button-primary" href="#cinematic">Watch the short film</a>
+            <a class="button button-secondary" href="#demo">Gameplay demo</a>
             <a class="button button-secondary" href="https://github.com/samguan2020/mortal-ascension">
               View source <span aria-hidden="true">↗</span>
             </a>
@@ -70,6 +74,67 @@
           </dl>
           <p class="proof-note">Private by design. Ephemeral by default.</p>
         </aside>
+      </section>
+
+      <section class="cinematic section-shell" id="cinematic" aria-labelledby="cinematic-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Original cinematic short · 1080p · 15 seconds</p>
+            <h2 id="cinematic-title"><span lang="zh-Hans">凡骨登仙</span><br>Mortal Ascension</h2>
+          </div>
+          <p>
+            <span lang="zh-Hans">凡骨入道，一念登仙。</span><br>
+            An ordinary traveler faces a distant gate above a sea of clouds.
+            A long-haired character, blue-green mountains, and bronze-jade ruins
+            introduce the world beyond the inn.
+          </p>
+        </div>
+        <figure class="video-stage">
+          <video
+            id="cinematic-video"
+            controls
+            preload="none"
+            playsinline
+            width="1920"
+            height="1080"
+            poster="assets/mortal-ascension-short.jpg"
+            aria-label="Mortal Ascension cinematic short"
+            aria-describedby="cinematic-caption"
+          >
+            <source src="assets/mortal-ascension-short.mp4" type="video/mp4">
+            <track kind="subtitles" src="assets/mortal-ascension-short.en.vtt" srclang="en" label="English">
+            <track kind="subtitles" src="assets/mortal-ascension-short.zh.vtt" srclang="zh" label="中文">
+            Your browser cannot play this video.
+            <a href="assets/mortal-ascension-short.mp4">Download the cinematic short instead.</a>
+          </video>
+          <figcaption id="cinematic-caption">
+            Offline Blender / Eevee cinematic study, not real-time gameplay.
+            Mandarin narration created with Clipchamp; original synthesized score
+            with plucked strings, flute-like melody and warm string layers.
+            Chinese subtitles are embedded; optional English subtitles are available
+            in the player. Playback starts only when you choose.
+          </figcaption>
+        </figure>
+        <div class="film-links">
+          <a href="assets/mortal-ascension-short.mp4" download>Download short film (MP4, 5.4 MB)</a>
+          <a href="assets/mortal-ascension-short.en.vtt" download>English subtitles</a>
+          <a href="assets/mortal-ascension-short.zh.vtt" download>Chinese subtitles</a>
+        </div>
+        <details class="film-transcript">
+          <summary>Narration transcript / <span lang="zh-Hans">旁白文稿</span></summary>
+          <p>
+            <span lang="zh-Hans">一介凡人，背起行囊，踏上问道之路。</span><br>
+            An ordinary mortal shoulders his pack and sets out in search of the Way.
+          </p>
+          <p>
+            <span lang="zh-Hans">云海尽头，仙门初现。</span><br>
+            Beyond the sea of clouds, the gate to immortality comes into view.
+          </p>
+          <p>
+            <span lang="zh-Hans">凡骨入道，一念登仙。</span><br>
+            Mortal-born, he enters the Way. One resolve: to ascend.
+          </p>
+        </details>
       </section>
 
       <section class="demo section-shell" id="demo" aria-labelledby="demo-title">

@@ -49,6 +49,15 @@ Add --face-preview to that reference command to render only frontal and
 three-quarter checks before refreshing the integrated scene and stills.
 The focused facial pass changes brows, skin-only lid hooding, nose/philtrum/lip
 landmarks and short clustered facial hair, not costume, lights or scalp groom.
+
+Append --hero-refinement to --ornate --reference-face for a separate
+FirstShot_TravelerHero.blend and traveler_hero_* outputs. This loads the accepted
+portrait, preserves its wardrobe/studio, and replaces only anatomy and groom.
+Use --face-preview first; the full run also checks side/rear hair and reloads.
+
+Append --flowing-refinement to those three variant flags to load the accepted
+Hero directly, retain its scalp/temples and create FirstShot_TravelerFlowing.blend
+and traveler_flowing_* only. This is authored static wind, not simulation.
 """
 
 import argparse
@@ -1385,7 +1394,245 @@ def reference_face_point(point, ocular=False):
     return p
 
 
-def build_reference_face():
+def hero_face_point(point, ocular=False):
+    """Apply localized lid, bridge, lip and cheek corrections in rest space."""
+    p = point.copy()
+    x, y, z = p
+    if z < 1.46 or ocular:
+        return p
+    front = min(1, max(0, (-y - .080) / .055))
+
+    def field(cx, cz, sx, sz):
+        return front * math.exp(-((abs(x) - cx) / sx) ** 2 - ((z - cz) / sz) ** 2)
+
+    socket = field(.036, 1.594, .019, .018)
+    upper = field(.036, 1.597, .018, .0055)
+    lower = field(.036, 1.585, .019, .005)
+    p.z += .0030 * upper - .0006 * lower
+    p.y += .0012 * upper
+    p.y -= .0008 * socket
+    ridge = field(.033, 1.614, .025, .009)
+    p.z -= .002 * ridge
+    p.y -= .0015 * ridge
+    bridge = field(0, 1.567, .011, .023)
+    p.y -= .0025 * bridge
+    tip = field(0, 1.549, .018, .008)
+    p.z += .0013 * tip
+    p.x -= math.copysign(.0018 * field(.019, 1.544, .009, .009), x)
+    p.y -= .0018 * field(.060, 1.565, .017, .014)
+    p.y += .0007 * field(.048, 1.537, .022, .016)
+    p.x -= math.copysign(.0012 * field(.072, 1.486, .022, .013), x)
+    mouth = front * math.exp(-((z - 1.509) / .008) ** 2)
+    p.z += mouth * (.0006 * math.exp(-((abs(x) - .011) / .009) ** 2)
+                    + .0008 * math.exp(-((abs(x) - .029) / .008) ** 2))
+    p.y += .0012 * field(.029, 1.509, .007, .007)
+    p.y -= .0010 * field(.007, 1.526, .003, .005)
+    p.y += .0008 * field(0, 1.526, .003, .005)
+    return p
+
+
+def build_hero_hair(head, mats):
+    """Build lifted, backward-running lock volumes over a close scalp foundation."""
+    hair = mats["hair"]
+    hair.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = .74
+    hair.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = .22
+    center = Vector((0, -.024, 1.635))
+
+    def scalp(theta, fraction):
+        limit = 1.62 - .53 * math.cos(theta)
+        limit += .30 * math.exp(-((abs(theta) - 1.30) / .30) ** 2)
+        limit += .015 * math.sin(theta * 17) + .008 * math.sin(theta * 31)
+        phi = .012 + fraction * limit
+        radial = Vector((math.sin(theta) * math.sin(phi),
+                         -math.cos(theta) * math.sin(phi), math.cos(phi)))
+        found, position, normal, _ = head.ray_cast(center + radial * .5, -radial)
+        if not found:
+            raise RuntimeError("Hero scalp projection missed anatomy")
+        return position + normal * .0012
+
+    vertices, faces = [], []
+    for row in range(33):
+        for col in range(129):
+            vertices.append(scalp(-math.pi + TAU * col / 128, row / 32))
+            if row < 32 and col < 128:
+                a = row * 129 + col
+                faces.append((a, a + 129, a + 130, a + 1))
+    cap = part(mesh_object("Hero_close_scalp_foundation", vertices, faces, hair), "head")
+    weld_surface(cap)
+
+    def lock(name, controls, width, depth, lateral):
+        controls = [Vector(p) for p in controls]
+        lateral = Vector(lateral).normalized()
+        vertices, faces = [], []
+        surface_lines = [[] for _ in range(3)]
+        for row in range(33):
+            t = row / 32
+            p = ((1 - t) ** 3 * controls[0] + 3 * t * (1 - t) ** 2 * controls[1]
+                 + 3 * t * t * (1 - t) * controls[2] + t ** 3 * controls[3])
+            tangent = (3 * (1 - t) ** 2 * (controls[1] - controls[0])
+                       + 6 * t * (1 - t) * (controls[2] - controls[1])
+                       + 3 * t ** 2 * (controls[3] - controls[2])).normalized()
+            across = (lateral - tangent * lateral.dot(tangent)).normalized()
+            normal = across.cross(tangent).normalized()
+            taper = (.88 + .12 * math.sin(math.pi * t)) * (1 - .80 * t ** 5)
+            relief = .08 + .92 * math.sin(math.pi * t) ** .7
+            for col in range(13):
+                angle = TAU * col / 12
+                vertices.append(p + across * (width * taper * math.cos(angle))
+                                + normal * (depth * relief * math.sin(angle)))
+                if row < 32 and col < 12:
+                    a = row * 13 + col
+                    faces.append((a, a + 1, a + 14, a + 13))
+            for index, angle in enumerate((.85, 1.45, 2.05)):
+                surface_lines[index].append(p + across * (width * taper * math.cos(angle))
+                                            + normal * (depth * relief * math.sin(angle) + .00008))
+        obj = part(mesh_object(name, vertices, faces, hair), "head")
+        weld_surface(obj)
+        obj["hero_flow_start"] = list(controls[0])
+        obj["hero_flow_end"] = list(controls[-1])
+        for index, points in enumerate(surface_lines):
+            part(stroke(name + "_soft_fiber", points, .00013,
+                        hair, [.08 + .65 * math.sin(math.pi * i / 32) for i in range(33)]), "head")
+        return obj
+
+    def sweep(theta, t, lift=0):
+        root = scalp(theta, .998)
+        front = math.exp(-(theta / 1.18) ** 4)
+        crest = 1.760 - .035 * math.sin(theta) ** 2
+        a = Vector((root.x * 1.035, root.y + .019 * front,
+                    (root.z + .035) * (1 - front) + crest * front))
+        b = Vector((root.x * .74 + .009 * front, .040 + .031 * (1 - front),
+                    1.740 + .028 * front))
+        end = Vector((.006 + .018 * math.sin(theta), .052 - .018 * math.cos(theta), 1.728))
+        p = (1 - t) ** 3 * root + 3 * t * (1 - t) ** 2 * a + 3 * t * t * (1 - t) * b + t ** 3 * end
+        p += Vector((.003 * math.cos(theta), .006 * abs(math.sin(theta)), 0)) * math.sin(math.pi * t)
+        normal = Vector((math.sin(theta), -math.cos(theta) * (1 - t), .7 + t)).normalized()
+        phase = theta * 19 + .65 * math.sin(theta * 7) + t * 1.4
+        ridge = .0018 * max(0, math.cos(phase)) ** 2 + .00025 * math.cos(phase * 2.7)
+        return p + normal * (ridge * math.sin(math.pi * t) ** .65 + lift)
+
+    boundary = hair.copy()
+    boundary.name = "Hero_soft_root_boundary"
+    boundary.blend_method = "HASHED"
+    boundary.shadow_method = "HASHED"
+    opacity = boundary.node_tree.nodes.new("ShaderNodeVertexColor")
+    opacity.layer_name = "HeroRootOpacity"
+    boundary.node_tree.links.new(opacity.outputs["Alpha"],
+                                boundary.node_tree.nodes["Principled BSDF"].inputs["Alpha"])
+    vertices, faces = [], []
+    for row in range(65):
+        for col in range(193):
+            theta = -math.pi + TAU * col / 192
+            vertices.append(sweep(theta, row / 64))
+            if row < 64 and col < 192:
+                a = row * 193 + col
+                faces.append((a, a + 1, a + 194, a + 193))
+    groom = part(mesh_object("Hero_lifted_continuous_swept_locks", vertices, faces, boundary), "head")
+    colors = groom.data.color_attributes.new(name="HeroRootOpacity", type="FLOAT_COLOR", domain="POINT")
+    for i, color in enumerate(colors.data):
+        color.color = (1, 1, 1, min(1, (i // 193) / 1.4))
+    weld_surface(groom)
+    for i in range(29):
+        theta = -math.pi + TAU * (i + .16 * math.sin(i * 2.1)) / 29
+        vertices, faces = [], []
+        for row in range(33):
+            t = .018 + .96 * row / 32
+            for col in range(9):
+                across = col / 8
+                angle = theta + .14 * (across - .5) + .16 * math.sin(math.pi * t)
+                lift = .0018 * math.sin(math.pi * across) ** 2 * math.sin(math.pi * t)
+                vertices.append(sweep(angle, t, lift))
+                if row < 32 and col < 8:
+                    a = row * 9 + col
+                    faces.append((a, a + 1, a + 10, a + 9))
+        part(mesh_object("Hero_overlapping_swept_layer", vertices, faces, hair), "head")
+    for side in (-1, 1):
+        for i in range(5):
+            vertices, faces = [], []
+            for row in range(33):
+                t = .014 + .79 * row / 32
+                for col in range(9):
+                    across = col / 8
+                    theta = side * (1.05 + .22 * i + .42 * math.sin(math.pi * t)
+                                    + .22 * (across - .5))
+                    lift = .0033 * math.sin(math.pi * across) ** 2 * math.sin(math.pi * row / 32) ** .7
+                    vertices.append(sweep(theta, t, lift))
+                    if row < 32 and col < 8:
+                        a = row * 9 + col
+                        faces.append((a, a + 1, a + 10, a + 9) if side > 0 else
+                                     (a + 9, a + 10, a + 1, a))
+            part(mesh_object("Hero_tucked_temple_layer", vertices, faces, hair), "head")
+    for side in (-1, 1):
+        vertices, faces = [], []
+        for row in range(25):
+            t = row / 24
+            width = .13 * (1 - t) ** .7 + .008
+            for col in range(13):
+                across = col / 12
+                theta = side * (1.15 + width * (across - .5))
+                fraction = .96 + .18 * t
+                vertices.append(scalp(theta, fraction))
+                if row < 24 and col < 12:
+                    a = row * 13 + col
+                    faces.append((a, a + 1, a + 14, a + 13))
+        sideburn = part(mesh_object("Hero_tapered_sideburn", vertices, faces, boundary), "head")
+        opacity = sideburn.data.color_attributes.new(
+            name="HeroRootOpacity", type="FLOAT_COLOR", domain="POINT")
+        for index, color in enumerate(opacity.data):
+            row, col = divmod(index, 13)
+            edge = min(1, col / 2, (12 - col) / 2)
+            color.color = (1, 1, 1, edge * min(1, (24 - row) / 5))
+        for i in range(27):
+            theta = side * (1.15 + .095 * (i / 26 - .5))
+            points = [scalp(theta + side * .02 * t, .95 + .18 * t)
+                      for t in (0, .2, .4, .6, .8, 1)]
+            part(stroke("Hero_sideburn_fine_growth", points, .00012, hair,
+                        [.2, .7, .7, .5, .3, .02]), "head")
+    for i in range(160):
+        theta = -2.5 + 5 * (i + .2 * math.sin(i * 2.39)) / 159
+        length = .012 + .009 * (1 + math.sin(i * 1.71))
+        points = [scalp(theta + .008 * math.sin(i + t), 1 + length * (1 - t))
+                  for t in (0, .25, .5, .75, 1)]
+        points.extend(sweep(theta, t, .00016) for t in (.015, .04, .08))
+        part(stroke("Hero_irregular_root_fiber", points, .00012, hair,
+                    [.02, .15, .4, .6, .7, .65, .4, .02]), "head")
+    for i in range(240):
+        theta = -math.pi + TAU * (i + .22 * math.sin(i * 2.39)) / 240
+        points = [sweep(theta + .007 * math.sin(t * 7 + i), t, .00013)
+                  for t in (.005, .035, .10, .22, .38, .55, .73, .89, .98)]
+        obj = part(stroke("Hero_backward_flow_fiber", points, .00012, hair,
+                          [.03, .20, .65, 1, .8, .7, .5, .3, .03]), "head")
+        obj["hero_flow_start"] = list(points[0])
+        obj["hero_flow_end"] = list(points[-1])
+        obj["hero_front_flow"] = abs(theta) < 1
+    root = part(sphere("Hero_gathered_bun_root", (.006, .052, 1.719),
+                       (.026, .027, .033), hair), "head")
+    bun = part(sphere("Hero_compact_folded_bun", (.006, .055, 1.750),
+                      (.029, .023, .017), hair), "head")
+    for i in range(7):
+        x = -.018 + .007 * i
+        crest = 1.784 - .014 * ((x - .003) / .026) ** 2
+        lock("Hero_bun_wrapped_fold",
+             ((x, .035, 1.737), (x - .006, .018, crest),
+              (x + .008, .089, crest - .001), (x + .004, .073, 1.740)),
+             .0045, .002, (1, 0, 0))
+    lock("Hero_bun_tucked_end",
+         ((.026, .034, 1.740), (.041, .042, 1.767),
+          (.027, .071, 1.772), (.022, .079, 1.743)),
+         .005, .0025, (0, 1, 0))
+    for z in (1.746, 1.749):
+        part(stroke("Hero_red_binding",
+                    [(.006 + .030 * math.sin(i / 64 * TAU),
+                      .055 + .026 * math.cos(i / 64 * TAU), z) for i in range(65)],
+                    .0014, mats["tie"]), "head")
+    part(sphere("Hero_binding_knot", (.035, .049, 1.747),
+                (.004, .004, .003), mats["tie"]), "head")
+    head["hero_hair_direction"] = "Roots lift from exposed forehead, sweep backward; side locks wrap upward"
+    root["hero_support"] = cap.name
+    bun["hero_support"] = root.name
+
+
+def build_reference_face(hero=False):
     """Author an approximate mature face and swept-back groom; never use photo pixels."""
     mats = {
         "skin": material("portrait_natural_skin", (.47, .270, .175), .55, bump=.00012),
@@ -1409,6 +1656,8 @@ def build_reference_face():
     ocular_indices = {i for p in head.data.polygons if p.material_index in (1, 2, 3) for i in p.vertices}
     for vertex in head.data.vertices:
         vertex.co = reference_face_point(vertex.co, vertex.index in ocular_indices)
+        if hero:
+            vertex.co = hero_face_point(vertex.co, vertex.index in ocular_indices)
     colors = head.data.color_attributes["SkinTone"]
     lip_mask = head.data.color_attributes.new(name="PortraitLipMask", type="FLOAT_COLOR", domain="POINT")
     for vertex, color in zip(head.data.vertices, colors.data):
@@ -1492,6 +1741,9 @@ def build_reference_face():
             x = side * (.010 + .059 * t)
             z = 1.613 + .0035 * math.sin(t * math.pi * .85) - .002 * t
             thickness = .0105 * (1 - .83 * t ** 4) * (.55 + .45 * min(1, t * 10))
+            if hero:
+                z = 1.609 + .0050 * math.sin(t * math.pi * .87) - .001 * t
+                thickness *= .80
             for col in range(7):
                 vertices.append(face(x, z + (col / 6 - .5) * thickness
                                      + .00035 * math.sin(t * 47 + col), .0007))
@@ -1508,7 +1760,9 @@ def build_reference_face():
             t = (i + .16 * math.sin(i * 2.39)) / 54
             x = side * (.011 + .055 * t)
             z = 1.613 + .0035 * math.sin(t * math.pi * .85) - .002 * t
-            z += .0035 * math.sin(i * 2.399)
+            if hero:
+                z = 1.609 + .0050 * math.sin(t * math.pi * .87) - .001 * t
+            z += (.0025 if hero else .0035) * math.sin(i * 2.399)
             part(stroke("Portrait_brow_fiber",
                         [face(x, z, .001), face(x + side * .0018, z + .0008, .001)],
                         .00016, mats["brow"], [.7, .05]), "head")
@@ -1544,6 +1798,28 @@ def build_reference_face():
         t, across = (i // 9) / 12, (i % 9) / 8
         color.color = (1, 1, 1, .65 * math.sin(t * math.pi) ** .4 * math.sin(across * math.pi) ** .4)
 
+    if hero:
+        build_hero_hair(head, mats)
+    else:
+        build_reference_hair(head, mats)
+    head["reference_provenance"] = "User-provided stylized illustration; approximate authored sculpt, no identity inference"
+    head["reference_sculpt_targets"] = json.dumps(REFERENCE_FACE_TARGETS)
+    eyes = []
+    for sign in (-1, 1):
+        indices = [i for i in iris_indices if raw[i].x * sign > 0]
+        if not indices:
+            raise RuntimeError("Missing reference eye geometry")
+        eyes.append(sum((head.data.vertices[i].co for i in indices), Vector()) / len(indices))
+    separation = (eyes[1] - eyes[0]).length
+    if not .060 < separation < .095 or abs(eyes[0].z - eyes[1].z) > .002:
+        raise RuntimeError(f"Misaligned sculpted eyes: {eyes}")
+    return {"iris_centers_rest": [list(p) for p in eyes], "iris_separation_m": separation,
+            "sculpt_targets": REFERENCE_FACE_TARGETS, "glasses_geometry_created": False,
+            "hero_localized_forms": hero, "anatomy_object": head.name}
+
+
+def build_reference_hair(head, mats):
+    """Keep the accepted portrait groom unchanged for the prior CLI branch."""
     center = Vector((0, -.024, 1.635))
 
     def scalp(theta, fraction, ridge=0):
@@ -1637,38 +1913,88 @@ def build_reference_face():
                     [(x, .081, 1.621), (x * 1.14, .086, 1.565),
                      (x * 1.18, .079, 1.493 + .009 * math.sin(i))],
                     .005, mats["hair"], [.7, 1, .035]), "head")
-    head["reference_provenance"] = "User-provided stylized illustration; approximate authored sculpt, no identity inference"
-    head["reference_sculpt_targets"] = json.dumps(REFERENCE_FACE_TARGETS)
-    eyes = []
-    for sign in (-1, 1):
-        indices = [i for i in iris_indices if raw[i].x * sign > 0]
-        if not indices:
-            raise RuntimeError("Missing reference eye geometry")
-        eyes.append(sum((head.data.vertices[i].co for i in indices), Vector()) / len(indices))
-    separation = (eyes[1] - eyes[0]).length
-    if not .060 < separation < .095 or abs(eyes[0].z - eyes[1].z) > .002:
-        raise RuntimeError(f"Misaligned sculpted eyes: {eyes}")
-    return {"iris_centers_rest": [list(p) for p in eyes], "iris_separation_m": separation,
-            "sculpt_targets": REFERENCE_FACE_TARGETS, "glasses_geometry_created": False}
 
 
-def reference_face_main(reference_proof=None, preview_only=False):
+def studio_fingerprint(scene, names):
+    """Fingerprint preserved mesh topology, materials, cameras and lighting."""
+    def values(block):
+        result = {}
+        for prop in block.bl_rna.properties:
+            if prop.is_readonly or prop.identifier in {"rna_type", "tag"} or prop.type not in {"BOOLEAN", "INT", "FLOAT", "STRING", "ENUM"}:
+                continue
+            value = getattr(block, prop.identifier)
+            result[prop.identifier] = list(value) if getattr(prop, "is_array", False) else value
+        return result
+
+    def nodes(tree):
+        return {
+            "nodes": [(node.name, values(node),
+                       [(socket.name, list(socket.default_value) if hasattr(socket.default_value, "__len__")
+                         and not isinstance(socket.default_value, str) else socket.default_value)
+                        for socket in node.inputs if hasattr(socket, "default_value")])
+                      for node in tree.nodes],
+            "links": [(link.from_node.name, link.from_socket.identifier,
+                       link.to_node.name, link.to_socket.identifier) for link in tree.links],
+        }
+
+    result = {}
+    materials = set()
+    for name in names:
+        obj = scene.objects[name]
+        entry = {"matrix": [list(row) for row in obj.matrix_world],
+                 "visible": not obj.hide_render, "type": obj.type}
+        if obj.type == "MESH":
+            geometry = hashlib.sha256()
+            for collection, key, size, dtype in (
+                (obj.data.vertices, "co", 3, np.float32),
+                (obj.data.loops, "vertex_index", 1, np.int32),
+                (obj.data.polygons, "loop_total", 1, np.int32),
+                (obj.data.polygons, "material_index", 1, np.int32),
+            ):
+                data = np.empty(len(collection) * size, dtype=dtype)
+                collection.foreach_get(key, data)
+                geometry.update(data.tobytes())
+            entry["geometry"] = geometry.hexdigest()
+            entry["materials"] = [slot.material.name if slot.material else None for slot in obj.material_slots]
+            materials.update(slot.material for slot in obj.material_slots if slot.material)
+        elif obj.type in {"CAMERA", "LIGHT"}:
+            entry["data"] = values(obj.data)
+        result[name] = entry
+    result["materials"] = {mat.name: {"properties": values(mat), "nodes": nodes(mat.node_tree)}
+                           for mat in materials if mat.use_nodes}
+    result["world"] = nodes(scene.world.node_tree)
+    result["view"] = values(scene.view_settings)
+    result["eevee"] = values(scene.eevee)
+    return result
+
+
+def reference_face_main(reference_proof=None, preview_only=False, hero=False):
     """Preserve both prior alternatives and render the integrated no-glasses study."""
-    output = HERE / "FirstShot_TravelerPortrait.blend"
+    prefix = "traveler_hero" if hero else "traveler_portrait"
+    output = HERE / ("FirstShot_TravelerHero.blend" if hero else "FirstShot_TravelerPortrait.blend")
     source = ROOT / "assets" / "source" / "characters" / "player_traveler_rigged.blend"
     preserved = [source, HERE / "refine_traveler_costume.py"]
     preserved += [p for p in HERE.glob("*.blend") if p != output]
     preserved += [p for p in RENDERS.iterdir() if p.is_file()
-                  and not p.name.startswith("traveler_portrait_")]
+                  and not p.name.startswith(prefix + "_")]
     before = {str(p.relative_to(ROOT)): digest(p) for p in preserved}
     if digest(source) != SOURCE_HASH:
         raise RuntimeError("Original source changed before portrait variant")
     if reference_proof is not None and digest(reference_proof) != REFERENCE_IMAGE_HASH:
         raise RuntimeError("User reference image fingerprint does not match")
-    bpy.ops.wm.open_mainfile(filepath=str(HERE / "FirstShot_TravelerOrnate.blend"))
+    accepted = HERE / ("FirstShot_TravelerPortrait.blend" if hero else "FirstShot_TravelerOrnate.blend")
+    if hero and digest(accepted) != "784F34B322BF63BCB8A7AD56DB75A562A1148590FA710ED33EC486A1FAC8ECE8":
+        raise RuntimeError("Accepted portrait fingerprint changed")
+    bpy.ops.wm.open_mainfile(filepath=str(accepted))
     scene = bpy.context.scene
     original = next(s for s in bpy.data.scenes if s.camera and s.camera.name == "CAM_ValleyReveal")
     original_name, original_camera = original.name, original.camera.name
+    protected_names = [obj.name for obj in scene.objects if not obj.name.startswith("Portrait_")]
+    protected_before = studio_fingerprint(scene, protected_names) if hero else None
+    if hero:
+        for obj in bpy.data.collections["Portrait_reference_sculpt_and_groom"].objects:
+            obj.hide_render = True
+            obj.hide_viewport = True
     prefixes = ("Study_irregular_hairline", "Study_tapered_hairline_lock", "Study_hairline_tip",
                 "Study_swept_lock", "Study_fine_hair", "Study_folded_hair_knot", "Study_bun_lock",
                 "Study_hair_binding", "Study_wooden_hairpin", "Study_temple_lock",
@@ -1681,8 +2007,18 @@ def reference_face_main(reference_proof=None, preview_only=False):
     base_parts = [o for name in ("Study_editable_baked_character", "Ornate_fitted_layers_and_craft")
                   for o in bpy.data.collections[name].objects if not o.hide_render]
     PARTS.clear()
-    face_evidence = build_reference_face()
+    face_evidence = build_reference_face(hero)
     bake_study_pose()
+    if hero:
+        old = bpy.data.objects["Portrait_reference_face_and_hands"]
+        new = bpy.data.objects[face_evidence["anatomy_object"]]
+        eye_indices = {i for polygon in new.data.polygons if polygon.material_index in (1, 2, 3)
+                       for i in polygon.vertices}
+        eye_delta = max((new.data.vertices[i].co - old.data.vertices[i].co).length for i in eye_indices)
+        if eye_delta > 1e-7:
+            raise RuntimeError(f"Hero ocular components moved out of alignment: {eye_delta}")
+        face_evidence["ocular_vertices_checked"] = len(eye_indices)
+        face_evidence["ocular_maximum_displacement_m"] = eye_delta
     for obj in PARTS:
         if any(word in obj.name.lower() for word in ("glasses", "spectacle", "lens")):
             raise RuntimeError(f"Unexpected eyewear in reference variant: {obj.name}")
@@ -1690,9 +2026,9 @@ def reference_face_main(reference_proof=None, preview_only=False):
             if slot.material and slot.material.use_nodes:
                 if any(node.type == "TEX_IMAGE" for node in slot.material.node_tree.nodes):
                     raise RuntimeError(f"Reference face unexpectedly uses an image texture: {obj.name}")
-    cap = bpy.data.objects["Portrait_swept_back_hair_mass"]
-    root = bpy.data.objects["Portrait_gathered_bun_root"]
-    bun = bpy.data.objects["Portrait_high_tied_bun"]
+    cap = bpy.data.objects["Hero_close_scalp_foundation" if hero else "Portrait_swept_back_hair_mass"]
+    root = bpy.data.objects["Hero_gathered_bun_root" if hero else "Portrait_gathered_bun_root"]
+    bun = bpy.data.objects["Hero_compact_folded_bun" if hero else "Portrait_high_tied_bun"]
     overlaps = []
     for first, second in ((cap, root), (root, bun)):
         high = min(max(v.co.z for v in first.data.vertices), max(v.co.z for v in second.data.vertices))
@@ -1701,8 +2037,23 @@ def reference_face_main(reference_proof=None, preview_only=False):
     if min(overlaps) < .003:
         raise RuntimeError(f"Reference bun appears detached: {overlaps}")
     face_evidence["bun_vertical_overlap_m"] = overlaps
+    if hero:
+        from mathutils.bvhtree import BVHTree
+        attachment = {}
+        for child, support in ((root, cap), (bun, root)):
+            tree = BVHTree.FromPolygons([v.co for v in support.data.vertices],
+                                       [list(p.vertices) for p in support.data.polygons])
+            distances = [tree.find_nearest(v.co)[3] for v in child.data.vertices]
+            attachment[child.name] = min(distances)
+            if min(distances) > .0015:
+                raise RuntimeError(f"Hero bun support is detached: {child.name}, {min(distances)}")
+        face_evidence["bun_surface_distance_m"] = attachment
+        flows = [obj for obj in PARTS if obj.get("hero_front_flow")]
+        if len(flows) < 60 or any(obj["hero_flow_end"][1] <= obj["hero_flow_start"][1] for obj in flows):
+            raise RuntimeError("Hero front locks do not flow backward")
+        face_evidence["backward_front_flow_paths"] = len(flows)
     face_evidence["facial_components_use_image_textures"] = False
-    collection = bpy.data.collections.new("Portrait_reference_sculpt_and_groom")
+    collection = bpy.data.collections.new("Hero_localized_face_and_groom" if hero else "Portrait_reference_sculpt_and_groom")
     scene.collection.children.link(collection)
     for obj in PARTS:
         for owner in list(obj.users_collection):
@@ -1713,6 +2064,10 @@ def reference_face_main(reference_proof=None, preview_only=False):
     center = pose_point(Vector((0, -.025, 1.618)), "head")
     for name, offset, scale in (("front", Vector((-.30, -4, .025)), .42),
                                 ("threequarter", Vector((2.5, -4, .20)), .44)):
+        if hero:
+            if "Study_camera_" + name not in scene.objects:
+                raise RuntimeError(f"Accepted portrait camera missing: {name}")
+            continue
         bpy.ops.object.camera_add(location=center + offset)
         camera = bpy.context.object
         camera.name = "Study_camera_" + name
@@ -1720,7 +2075,10 @@ def reference_face_main(reference_proof=None, preview_only=False):
         camera.data.ortho_scale = scale
         point_at(camera, center)
     for name in ("front", "threequarter"):
-        render(scene, name, f"traveler_portrait_{name}.png")
+        render(scene, name, f"{prefix}_{name}.png")
+    if hero:
+        if studio_fingerprint(scene, protected_names) != protected_before:
+            raise RuntimeError("Hero refinement changed accepted wardrobe or studio")
     if preview_only:
         after = {str(p.relative_to(ROOT)): digest(p) for p in preserved}
         if before != after:
@@ -1730,40 +2088,67 @@ def reference_face_main(reference_proof=None, preview_only=False):
         print("FACIAL_PREVIEW_VERIFIED: frontal and three-quarter only; integrated outputs not refreshed", flush=True)
         return
     for name in ("half", "full", "rear"):
-        render(scene, name, f"traveler_portrait_{name}.png")
-    contact_sheet("traveler_portrait", ("traveler_ornate_full.png", "traveler_portrait_full.png",
-                                       "traveler_ornate_half.png", "traveler_portrait_half.png"))
+        render(scene, name, f"{prefix}_{name}.png")
+    if hero:
+        for name, offset in (("hair_side", Vector((4, .15, .15))),
+                             ("hair_rear", Vector((.3, 4, .25)))):
+            bpy.ops.object.camera_add(location=center + offset)
+            camera = bpy.context.object
+            camera.name = "Study_camera_" + name
+            camera.data.type = "ORTHO"
+            camera.data.ortho_scale = .42
+            point_at(camera, center)
+            render(scene, name, f"{prefix}_{name}.png")
+    previous = "traveler_portrait" if hero else "traveler_ornate"
+    contact_sheet(prefix, (f"{previous}_full.png", f"{prefix}_full.png",
+                           f"{previous}_half.png", f"{prefix}_half.png"))
+    if hero:
+        contact_sheet("traveler_hero_face", ("traveler_portrait_front.png", "traveler_hero_front.png",
+                                           "traveler_portrait_threequarter.png", "traveler_hero_threequarter.png"))
     bpy.ops.file.pack_all()
     scene.camera = bpy.data.objects["Study_camera_half"]
     scene.render.resolution_x, scene.render.resolution_y = 1200, 1500
-    scene.render.filepath = str(RENDERS / "traveler_portrait_half.png")
+    scene.render.filepath = str(RENDERS / f"{prefix}_half.png")
     bpy.context.preferences.filepaths.save_version = 0
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
     bpy.ops.wm.open_mainfile(filepath=str(output))
     if bpy.data.scenes[original_name].camera.name != original_camera:
         raise RuntimeError("Reference variant lost preserved cinematic camera")
-    render(bpy.context.scene, "half", "traveler_portrait_reload_half.png")
-    difference = compare_reload("traveler_portrait")
+    render(bpy.context.scene, "half", f"{prefix}_reload_half.png")
+    difference = compare_reload(prefix)
+    if hero:
+        if studio_fingerprint(bpy.context.scene, protected_names) != protected_before:
+            raise RuntimeError("Saved hero scene changed wardrobe, materials, lighting or cameras")
+        PARTS.clear()
+        PARTS.extend(obj for name in ("Study_editable_baked_character", "Ornate_fitted_layers_and_craft",
+                                      "Hero_localized_face_and_groom")
+                     for obj in bpy.data.collections[name].objects if not obj.hide_render)
+        validate(bpy.context.scene, bpy.data.scenes[original_name], original_camera)
     after = {str(p.relative_to(ROOT)): digest(p) for p in preserved}
     if before != after:
         raise RuntimeError("Reference variant changed a preserved input")
     if reference_proof is not None and digest(reference_proof) != REFERENCE_IMAGE_HASH:
         raise RuntimeError("Read-only reference changed during generation")
-    evidence.update({"variant": "ornate_reference_face_without_glasses",
+    evidence.update({"variant": "hero_refinement_without_glasses" if hero else "ornate_reference_face_without_glasses",
                      "focused_likeness_correction": 1,
                      "facial_geometry": face_evidence, "preserved_hashes": after,
                      "reference_image_sha256": REFERENCE_IMAGE_HASH,
                      "reference_proof_checked": reference_proof is not None,
                      "reference_bitmap_embedded": False, "reload_verified": True,
                      "reload_half_pixel_difference": difference,
-                     "comparison_columns": ["prior ornate full", "reference-face full",
-                                             "prior ornate half", "reference-face half"],
+                     "comparison_columns": [f"{previous} full", f"{prefix} full",
+                                             f"{previous} half", f"{prefix} half"],
                      "limitations": ["Approximate reference-inspired sculpt, not an exact likeness or photoreal reconstruction",
                                      "Single small frontal illustration leaves side profile and concealed eyes uncertain",
                                      "Static baked pose; no facial animation or cloth simulation"],
-                     "outputs": [p.name for p in RENDERS.glob("traveler_portrait_*.png")]})
-    (RENDERS / "traveler_portrait_evidence.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
-    print("REFERENCE_FACE_VERIFIED", json.dumps({k: v for k, v in evidence.items() if k != "preserved_hashes"}), flush=True)
+                     "outputs": [p.name for p in RENDERS.glob(prefix + "_*.png")]})
+    if hero:
+        evidence["preserved_studio_and_wardrobe"] = protected_before
+        evidence["protected_object_count"] = len(protected_names)
+        evidence["saved_geometry_revalidated"] = True
+    (RENDERS / f"{prefix}_evidence.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+    print("REFERENCE_FACE_VERIFIED", json.dumps({k: v for k, v in evidence.items()
+          if k not in {"preserved_hashes", "preserved_studio_and_wardrobe"}}), flush=True)
 
 
 def main():
@@ -1890,6 +2275,8 @@ if __name__ == "__main__":
     parser.add_argument("--reference-face", action="store_true", help="Create a separate reference-inspired face without glasses")
     parser.add_argument("--reference-proof", type=Path, help="Optional read-only local reference image fingerprint check")
     parser.add_argument("--face-preview", action="store_true", help="Render reference frontal/three-quarter for inspection before integrated stills")
+    parser.add_argument("--hero-refinement", action="store_true", help="Preserve the accepted portrait and create a separate hero face/groom variant")
+    parser.add_argument("--flowing-refinement", action="store_true", help="Load accepted Hero; create isolated half-loose long hair and refined face")
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
     if args.reference_face and not args.ornate:
         parser.error("--reference-face requires --ornate")
@@ -1897,8 +2284,18 @@ if __name__ == "__main__":
         parser.error("--reference-proof requires --reference-face")
     if args.face_preview and not args.reference_face:
         parser.error("--face-preview requires --reference-face")
-    if args.reference_face:
-        reference_face_main(args.reference_proof, args.face_preview)
+    if args.hero_refinement and not (args.ornate and args.reference_face):
+        parser.error("--hero-refinement requires --ornate --reference-face")
+    if args.flowing_refinement and not (args.ornate and args.reference_face and args.hero_refinement):
+        parser.error("--flowing-refinement requires --ornate --reference-face --hero-refinement")
+    if args.flowing_refinement and args.reference_proof is not None:
+        parser.error("--flowing-refinement uses the accepted local Hero, not a reference image")
+    if args.flowing_refinement:
+        sys.path.insert(0, str(HERE))
+        from traveler_flowing import run
+        run(sys.modules[__name__], args.face_preview)
+    elif args.reference_face:
+        reference_face_main(args.reference_proof, args.face_preview, args.hero_refinement)
     elif args.ornate:
         ornate_main()
     else:

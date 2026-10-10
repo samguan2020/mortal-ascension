@@ -19,6 +19,7 @@ Mortal Ascension is a standalone browser game. The production stack is
 │   ├── characters/              # Editable Blender files
 │   └── motions/                 # Reusable source animation GLBs
 ├── cinematics/blender/          # Offline Eevee cinematic scenes and build scripts
+├── showcase/                    # GitHub Pages showcase and approved public videos
 ├── tools/
 │   ├── asset-pipeline/          # Character build/validation tools
 │   ├── deploy_azure.py
@@ -38,6 +39,18 @@ Mortal Ascension is a standalone browser game. The production stack is
 | `tools/asset-pipeline/**/*.py` | Offline asset generation and validation |
 | `assets/source/**` | Editable source assets; never imported at runtime |
 | `cinematics/blender/**` | Editable offline cinematic scenes; renders are ignored |
+| `showcase/**` | Static public Pages site; only approved final media, never editable sources or personal references |
+
+## Public cinematic publication
+
+The Pages workflow publishes only `showcase/` on pushes to `main` that change it.
+`assets/mortal-ascension-short.mp4` is the approved
+`cinematics/blender/renders/mortal_ascension_flowing.mp4`, copied byte-for-byte.
+The adjacent JPEG poster is a frame extracted at 4 seconds; English and Chinese
+WebVTT tracks retain the approved narration intervals. The player uses native
+controls, no autoplay, a poster and `preload="none"`, plus a bilingual transcript.
+The original `assets/demo.mp4` remains the separate real-time gameplay demo.
+Blender scenes stay in Git LFS and are not part of the Pages artifact.
 
 ## Cinematic visual test
 
@@ -166,6 +179,56 @@ not the mutable Downloads original or a speech service. It writes
 The default commands still use Microsoft Kangkang and `narrated_*`; this variant
 does not replace those assets or `mortal_ascension_narrated.mp4`.
 
+For the approved long-haired flowing-traveler film, prepare the **separate**
+original score variant without a source video or Downloads input:
+
+```powershell
+python -B cinematics\blender\narrate_first_shot.py --prepare --variant flowing
+python -B -m unittest discover -s cinematics\blender -p "*_test.py" -v
+# Only after the visual worker confirms the silent source is complete:
+python -B cinematics\blender\narrate_first_shot.py --assemble --variant flowing
+```
+
+This variant additionally uses locally installed NumPy (validated with 2.1.3).
+`compose_flowing_score.py` supplies the original **Beyond the Cloud Gate** cue:
+modal damped-string plucks with pluck-position/body resonances, a breathy
+synthesized flute question and varied rising answer, and slowly bowed detuned
+string layers moving through Bm7, Gadd9, A7 and D. The harmony resolves around
+the 9.2-second title transition. A quiet tonic echo, diffuse stereo reflections
+and a smooth tail end in the final quarter-second of silence. There is no
+metronomic percussion, imported recording, licensed sample, song imitation,
+live traditional instrumental performance, external generation or service call.
+Composition and procedural synthesis credit: original work for Mortal Ascension.
+This changes only the offline film, not the game's art or dialogue design.
+
+Preparation verifies the approved SHA256 of `clipchamp_timing.json` and
+`clipchamp_input.m4a`, imports that local archive and verifies its decoded PCM
+against the archived decoded WAV. It retains every dual-mono speech sample,
+sentence cut, pace and caption: 0.75-5.21, 5.66-8.44 and
+10.2-13.093333 seconds; the title is fully visible at 10 seconds.
+No new TTS is called. Speech placement/gain is unchanged and centered; only
+the new music is smoothly ducked, retaining at least 14 dB sentence-level
+voice/music RMS separation. The film remains 14.625 seconds / 351 frames.
+PCM and a temporary delivery-equivalent AAC encode must pass the existing
+-18 +/-0.5 LUFS and <=-2 dBTP checks.
+
+All new prepared assets are `renders/flowing_*`, including `flowing_music.wav`
+for direct score audition; `flowing_music_lead.wav`, `flowing_music_plucks.wav`,
+`flowing_music_strings.wav`; unchanged narration slices, voice stem, ducked
+music, raw/normalized mixes, SRT and title/caption PNGs. `flowing_score.json`
+records original note events, section/harmony descriptions, synthesis seed,
+generator hash, continuity/bandwidth/mono metrics and sample provenance.
+`flowing_timing.json` records prepared-asset hashes, narration provenance,
+sentence-level mix margins, measured loudness and the assembly command.
+Numerical checks are not a listening review; musical preference requires audition.
+
+Assembly selects only `renders/bronze_jade_flowing.mp4`, which must be a complete
+silent 10-second / 240-frame 1920x1080/24 fps source. It writes only
+`renders/mortal_ascension_flowing.mp4`, never the old films. Both preparation
+and assembly refuse to proceed if that completed film exists, preserving the
+film and its prepared assets. Default Windows and Clipchamp routing/behavior
+remain unchanged. Do not run assembly while the visual worker is rendering.
+
 The base render is a silent cinematic material study; even the packaged
 version is not final trailer art or game footage, and neither changes the
 game's art bible.
@@ -263,3 +326,70 @@ are unchanged. Add `--face-preview` to the reference-face command to render and
 inspect only frontal/three-quarter views before running the complete command.
 The source's generic socket, cheek and mouth topology still limits likeness:
 these edits improve characterization, not a faithful reconstruction.
+
+#### Isolated hero face and swept-back hair refinement
+
+Append `--hero-refinement` to `-- --ornate --reference-face` to load the accepted
+portrait and write only `FirstShot_TravelerHero.blend` and `renders/traveler_hero_*`.
+The flag requires both preceding variant flags; all older routes remain separate.
+Run with `--face-preview` first for 1080x1500 front/three-quarter inspection,
+then omit it for the integrated half (1200x1500), full, rear and hair side/rear
+views. The full run saves/reloads the scene and rerenders the half-body proof.
+
+This variant replaces the rounded scalp groom with lifted backward-swept front
+lock volumes, narrow upward-wrapping temple layers and a compact folded high bun
+with a red binding. Localized lid/socket, brow, bridge/tip, philtrum, lip-corner
+and cheek edits idealize a mature cultivator without glasses, giant eyes or a
+pointed chin. The short moustache/goatee is retained. It does not infer identity
+or recover anatomy concealed by the reference glasses.
+
+The final groom pass lowers the side hair boundary, projects tapered sideburns
+onto the head, softens the swept-lock relief and adds irregular root fibers.
+Side and rear close-ups are required checks: a backward flow alone does not
+establish a convincing reference hairstyle.
+
+Wardrobe mesh/material fingerprints and existing studio cameras, lights, world
+and exposure are checked before generation and after reload. Evidence records
+preserved file hashes, eye alignment, backward front-lock flow, bun attachment,
+finite geometry and the existing 600k-vertex offline budget. The contact sheet
+compares prior portrait/new hero full and half views; `traveler_hero_face_contact_sheet.png`
+compares prior/new front and three-quarter views with identical camera and light
+settings. No bitmap is used as a face texture. All prior scenes/renders, the
+read-only reference and the original rigged character remain unchanged.
+This is still a **static baked-pose visual variant**, not a rigged character,
+exact likeness, photoreal reconstruction or final animation-ready art.
+
+#### Half-tied, long flowing hair alternative
+
+Append `--flowing-refinement` to `-- --ornate --reference-face --hero-refinement`
+to load the accepted Hero directly. Only `FirstShot_TravelerFlowing.blend` and
+`renders/traveler_flowing_*` are written. `--face-preview` renders just the two
+face views first; omit it for half/full/rear, long-hair side/rear inspections,
+matching-light comparisons and a saved-scene reload proof.
+The isolated `traveler_flowing.py` helper reuses the generator's materials,
+mesh, camera, preservation and validation functions rather than duplicating
+the older build routes. No reference image, Tripo, network or paid generation
+is involved; `--reference-proof` is intentionally invalid for this variant.
+
+The accepted scalp, improved temple roots, compact topknot/red cord, skin
+materials, ornate wardrobe and studio are retained. Five main flattened
+S-curve hair masses plus ten tapered subordinate locks create a shoulder-to-
+mid-back silhouette with authored lateral wind. UV-directed fine relief uses
+Blender 3.6 Eevee; no particle system or physics simulation is involved.
+Brows and short moustache fibers are replaced rather than accumulated.
+Small bridge/tip, lip-corner and cheek/jaw corrections leave ocular vertices
+unchanged. The existing 600k visible-character vertex guard remains in force.
+Evidence records before/after preserved hashes, hair-root surface distances,
+eye displacement, full-body framing, timings and reload pixel differences.
+This remains an **offline static baked-pose study**, not an animation-ready
+character or a production browser asset.
+
+Validated local build: 599,433 visible character vertices, including 21,615
+new hair vertices; 2,172 ocular vertices unchanged; five principal hair arcs
+0.57-0.71 m long. Projected root rings remain within 0.5 mm of the scalp.
+Triangle-overlap checks find no long-hair/wardrobe intersections, and full/rear/
+hair-inspection cameras retain the complete long-hair silhouette. The full
+128-sample build and reload proof took about 174 seconds on the local machine;
+individual stills took 10-17 seconds. These are offline measurements, not
+runtime performance guarantees. Close-ups still reveal stylized broad locks,
+some hashed root-transition grain and the inherited eye-socket shadow.
