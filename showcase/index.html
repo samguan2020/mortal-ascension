@@ -31,6 +31,7 @@
       <nav aria-label="Showcase navigation">
         <a href="#cinematic">Short Film</a>
         <a href="#demo">Demo</a>
+        <a href="#traveler">Traveler</a>
         <a href="#intelligence">AI Features</a>
         <a href="#stack">Tech Stack</a>
         <a class="nav-source" href="https://github.com/samguan2020/mortal-ascension">View Source</a>
@@ -156,6 +157,35 @@
           </video>
           <figcaption>
             Real-time browser gameplay in Tingyu Inn. Playback is always visitor-controlled.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="traveler section-shell" id="traveler" aria-labelledby="traveler-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Updated player character</p>
+            <h2 id="traveler-title">A new face for the journey</h2>
+          </div>
+          <p>
+            The playable traveler now uses a character model generated with the
+            Tripo API. SayMotion API supplies the walk animation, which project
+            tools retarget to the character's skeleton.
+          </p>
+        </div>
+        <figure class="video-stage traveler-stage">
+          <img
+            src="assets/traveler-gameplay.png"
+            alt="Gameplay screenshot of the new light-robed traveler facing Innkeeper Liu inside Tingyu Inn."
+            width="1334"
+            height="768"
+            loading="lazy"
+            decoding="async"
+          >
+          <figcaption>
+            Tripo API character generation · SayMotion API walk animation ·
+            Blender and Python retargeting. Development capture; the local AI
+            service was offline when this screenshot was taken.
           </figcaption>
         </figure>
       </section>

@@ -326,6 +326,12 @@ h1 {
   background: #000;
 }
 
+.traveler-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .video-stage figcaption {
   padding: 14px 6px 2px;
   color: #9f9178;
